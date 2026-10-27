@@ -1,6 +1,6 @@
 # Development and Delivery Plan
 
-> Project: Transaction Ledger | Version: 0.1 (review draft) | Status: Implementation plan; code not started
+> Project: Transaction Ledger | Version: 0.1 (review draft) | Status: Accounts, credit/debit writes, and history implemented; frontend pending
 >
 > **Assessment constraint:** the PDF describes a **3–4 hour backend assessment**. The user additionally requested a React frontend and a maintainable TypeScript monorepo. Complete mandatory backend behavior, integrity tests, and documentation **before** spending assessment-critical time on UI polish or optional features.
 
@@ -101,17 +101,17 @@ P0/P1 are both assessment requirements; the priority tiers are planning labels, 
 
 **Dependencies:** Phase 3. **Highest correctness priority.**
 
-- [ ] Add shared transaction request/response schemas (`type`, decimal-string `amount`, optional `description`, required `reference_id`).
-- [ ] Implement `POST /api/v1/accounts/:accountId/transactions`.
-- [ ] Acquire one `pg` client and `BEGIN` transaction for each mutation.
-- [ ] Lock the target account with `SELECT ... FOR UPDATE` **before** duplicate/funds checks.
-- [ ] Reject missing accounts (`404`), invalid input (`400`), duplicate account/reference (`409`), insufficient funds (`422`).
-- [ ] Use PostgreSQL numeric arithmetic for credit/debit and insert exactly one ledger entry.
-- [ ] `COMMIT` only if balance change and insert both succeed; rollback on any failure.
-- [ ] Enforce `UNIQUE (account_id, reference_id)` in DB regardless of application precheck.
-- [ ] Do not implement any transaction update/delete routes.
-- [ ] Add tests for credit, debit, insufficient funds, duplicate same account, same reference different accounts, rollback, invalid precision, and simultaneous conflicting debits.
-- [ ] Comment why locks, transaction boundaries, and duplicate checks are ordered this way.
+- [x] Add shared transaction request/response schemas (`type`, decimal-string `amount`, optional `description`, required `reference_id`).
+- [x] Implement `POST /api/v1/accounts/:accountId/transactions`.
+- [x] Acquire one `pg` client and `BEGIN` transaction for each mutation.
+- [x] Lock the target account with `SELECT ... FOR UPDATE` **before** duplicate/funds checks.
+- [x] Reject missing accounts (`404`), invalid input (`400`), duplicate account/reference (`409`), insufficient funds (`422`).
+- [x] Use PostgreSQL numeric arithmetic for credit/debit and insert exactly one ledger entry.
+- [x] `COMMIT` only if balance change and insert both succeed; rollback on any failure.
+- [x] Enforce `UNIQUE (account_id, reference_id)` in DB regardless of application precheck.
+- [x] Do not implement any transaction update/delete routes.
+- [x] Add tests for credit, debit, insufficient funds, duplicate same account, same reference different accounts, rollback, invalid precision, and simultaneous conflicting debits.
+- [x] Comment why locks, transaction boundaries, and duplicate checks are ordered this way.
 
 **Exit:** A credit/debit is safe under failures and concurrent requests, not merely correct in a serial happy path.
 
@@ -119,15 +119,15 @@ P0/P1 are both assessment requirements; the priority tiers are planning labels, 
 
 **Dependencies:** Phase 4.
 
-- [ ] Implement `GET /api/v1/accounts/:accountId/transactions`.
-- [ ] Validate `type=credit|debit`, positive `page`, and `limit` range 1–100.
-- [ ] Use `page=1`, `limit=20` defaults; omit type filter to include both types.
-- [ ] Return `data` array and `pagination` (`page`, `limit`, `total_records`, `total_pages`).
-- [ ] Sort `created_at DESC, id DESC`.
-- [ ] Return `404` for unknown account and empty array for known account without matches.
-- [ ] Standardize error JSON across all endpoints; hide database exceptions from public responses.
-- [ ] Verify history count and list use matching filters.
-- [ ] Test empty history, filtered history, pagination boundaries, ordering, and invalid query parameters.
+- [x] Implement `GET /api/v1/accounts/:accountId/transactions`.
+- [x] Validate `type=credit|debit`, positive `page`, and `limit` range 1–100.
+- [x] Use `page=1`, `limit=20` defaults; omit type filter to include both types.
+- [x] Return `data` array and `pagination` (`page`, `limit`, `total_records`, `total_pages`).
+- [x] Sort `created_at DESC, id DESC`.
+- [x] Return `404` for unknown account and empty array for known account without matches.
+- [x] Standardize error JSON across all endpoints; hide database exceptions from public responses.
+- [x] Verify history count and list use matching filters.
+- [x] Test empty history, filtered history, pagination boundaries, ordering, and invalid query parameters.
 
 **Exit:** All four mandatory API capabilities are functional and documented by tests.
 

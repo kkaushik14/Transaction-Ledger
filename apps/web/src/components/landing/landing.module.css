@@ -1,0 +1,263 @@
+/* Monochrome landing compositions use shared tokens and primitives, never page-local controls. */
+.hero {
+  padding-block: var(--space-20) var(--space-16);
+  overflow: clip;
+}
+.heroGrid {
+  display: grid;
+  gap: var(--space-12);
+  align-items: center;
+}
+.heroCopy {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-6);
+  min-width: 0;
+}
+.eyebrow {
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  background: var(--color-text);
+  border-radius: var(--radius-pill);
+}
+.hero h1 {
+  font-size: var(--text-display);
+  line-height: 1.04;
+  letter-spacing: -0.055em;
+  max-width: 690px;
+}
+.hero h1 span {
+  color: var(--color-muted);
+}
+.heroDescription {
+  color: var(--color-muted);
+  font-size: var(--text-lg);
+  max-width: 45ch;
+  line-height: 1.75;
+}
+.heroNote {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+.heroNote span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.preview {
+  margin: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 460px;
+  justify-self: center;
+  position: relative;
+}
+.previewCard {
+  padding: 0;
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.previewTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+}
+.previewMark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+.previewLabel {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-muted);
+}
+.previewBalance {
+  padding: var(--space-8) var(--space-6);
+}
+.previewBalance p {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-2);
+}
+.previewAmount {
+  display: block;
+  font-size: clamp(2.5rem, 4vw, 3.5rem);
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+  font-weight: 550;
+}
+.previewCaption {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  margin-top: var(--space-3);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+.previewRows {
+  padding: 0 var(--space-6) var(--space-4);
+}
+.previewRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+}
+.previewRow > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.previewRow small {
+  display: block;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+.entryIcon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.previewFoot {
+  background: var(--color-surface);
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+.figureCaption {
+  margin-top: var(--space-3);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+.heroStrip {
+  margin-top: var(--space-16);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-8);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+.heroStrip span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.featureGrid,
+.stepsGrid,
+.principlesGrid,
+.entryGrid {
+  display: grid;
+  gap: var(--space-5);
+}
+.featureCard {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+}
+.featureIcon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+}
+.featureCard p,
+.step p {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  line-height: 1.7;
+}
+.step {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-control-border);
+}
+.stepNumber {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+.principles {
+  background: var(--color-text);
+  color: var(--color-on-strong);
+}
+.principles h2 {
+  max-width: 720px;
+}
+.principlesGrid {
+  margin-top: var(--space-10);
+}
+.principle {
+  display: grid;
+  gap: var(--space-4);
+  border-top: 1px solid var(--color-inverse-border);
+  padding-top: var(--space-6);
+}
+.principle > svg {
+  width: 26px;
+  height: 26px;
+}
+.principle p {
+  color: var(--color-inverse-muted);
+  font-size: var(--text-sm);
+  line-height: 1.75;
+  max-width: 35ch;
+}
+.entryCard {
+  padding: var(--space-8);
+}
+.entryNote {
+  margin-top: var(--space-5);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+.finalCta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+.finalCta h2 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+}
+.finalCta p {
+  margin-top: var(--space-3);
+  color: var(--color-muted);
+}

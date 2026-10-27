@@ -1,0 +1,20 @@
+# Shared contracts are linked locally; recursive builds follow dependency order.
+packages:
+  - apps/*
+  - packages/*
+
+# Keep the pnpm content-addressed store inside this workspace.
+storeDir: .pnpm-store
+saveExact: true
+# Allow the binary verification required by the tsx development runner.
+allowBuilds:
+  # Required symlinks for the pinned native PostgreSQL test binaries.
+  '@embedded-postgres/darwin-arm64@17.10.0-beta.17': true
+  '@embedded-postgres/darwin-x64@17.10.0-beta.17': true
+  '@embedded-postgres/linux-arm@17.10.0-beta.17': true
+  '@embedded-postgres/linux-arm64@17.10.0-beta.17': true
+  '@embedded-postgres/linux-ia32@17.10.0-beta.17': true
+  '@embedded-postgres/linux-ppc64@17.10.0-beta.17': true
+  '@embedded-postgres/linux-x64@17.10.0-beta.17': true
+  '@embedded-postgres/windows-x64@17.10.0-beta.17': true
+  esbuild: true

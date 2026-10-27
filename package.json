@@ -1,0 +1,35 @@
+{
+  "name": "transaction-ledger",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "pnpm": ">=11.19.0 <12"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @ledger/contracts build && pnpm -r --parallel dev",
+    "dev:api": "pnpm --filter @ledger/contracts build && pnpm --filter @ledger/api dev",
+    "dev:web": "pnpm --filter @ledger/contracts build && pnpm --filter @ledger/web dev",
+    "build": "pnpm -r build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "pnpm --filter @ledger/contracts build && pnpm -r typecheck",
+    "test": "pnpm --filter @ledger/contracts build && pnpm -r test",
+    "test:e2e": "pnpm --filter @ledger/contracts build && pnpm --filter @ledger/web test:e2e"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.13.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.13.0",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.0.5"
+  }
+}

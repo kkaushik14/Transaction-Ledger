@@ -225,7 +225,7 @@ Expected result is **zero rows**. This query is a diagnostic; do not use it to s
 - Count total rows with the same account/type filter, excluding limit/offset.
 - Response metadata: `page`, `limit`, `total_records`, `total_pages = CEIL(total_records / limit)`.
 - An existing account with no records returns `data: []` and `total_pages: 0`.
-- Each read is individually consistent, but page/count reads may observe new writes between queries at the default `READ COMMITTED` isolation level. For snapshot-consistent pagination metadata, execute count and page reads in one read-only `REPEATABLE READ` transaction; this is a refinement, not an assessment-mandated feature.
+- History reads now execute account existence, count, and page selection on one client in a read-only `REPEATABLE READ` transaction. This implements the proposed snapshot-consistency refinement so a concurrent commit cannot make totals disagree with page rows within one response. Different page requests still use independent snapshots.
 
 ## 10. Bonus transfer schema — separate later migration
 
@@ -276,7 +276,7 @@ Implementation sequence within one DB transaction: lock both accounts in sorted-
 - [ ] Same-account duplicate reference fails; different-account same reference succeeds.
 - [ ] Balance write and ledger insertion roll back together on a forced failure.
 - [ ] Concurrent debit requests cannot overspend.
-- [ ] History sorted latest-first with stable tie-break, filters and pagination.
+- [x] History sorted latest-first with stable tie-break, filters and pagination (verified in isolated PostgreSQL tests).
 - [ ] Reconciliation query returns no mismatches after test cases.
 - [ ] Production DB credentials are not in source or frontend build.
 - [ ] Bonus transfer tables are absent until optional scope is approved.

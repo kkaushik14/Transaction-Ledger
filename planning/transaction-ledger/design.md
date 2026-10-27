@@ -172,6 +172,7 @@ Rules:
 - `reference_id` is required, nonblank, account-scoped unique, and case-sensitive.
 - Repeating the same reference for the **same account** returns `409` with no balance change or new row (even if other request fields differ). The same reference may be used by a different account.
 - For debit, reject insufficient balance (`422`) with no changes.
+- For credit, reject a resulting balance above `999999999999999999.99` with `422 BALANCE_LIMIT_EXCEEDED` and no changes.
 - Write transaction and balance in one database transaction. Never accept user-supplied `id`, `account_id` in the body, or `created_at`.
 - If omitted, `description` becomes `""`.
 
@@ -226,7 +227,7 @@ Response — `200 OK`:
 }
 ```
 
-SQL query must apply account and optional type filter, sort by `created_at DESC, id DESC`, then `LIMIT`/`OFFSET`. Count query uses the **same filters** without pagination. Return `404` for an unknown account; return `[]` for an existing account with no matching rows.
+SQL query must apply account and optional type filter, sort by `created_at DESC, id DESC`, then `LIMIT`/`OFFSET`. Count query uses the **same filters** without pagination. Account existence, count, and page selection run in one read-only `REPEATABLE READ` snapshot. Query validation rejects repeated/unknown fields and requires safe integer page/limit/offset values. Return `404` for an unknown account; return `[]` for an existing account with no matching rows.
 
 ### 6.5 Error contract
 

@@ -1,0 +1,35 @@
+# Dependencies and generated files
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+**/build/
+coverage/
+**/coverage/
+.vite/
+**/.vite/
+*.tsbuildinfo
+
+# Supabase CLI generated/temporary files
+supabase/.temp/
+supabase/.branches/
+.supabase/
+
+# Git, local environment values, and lockfile
+.git/
+.env
+**/.env
+.env.*
+**/.env.*
+!**/.env.example
+pnpm-lock.yaml
+
+# Non-source output
+*.log
+*.min.js
+*.min.css
+
+# Original planning pack is preserved as supplied.
+planning/
+.pnpm-store/

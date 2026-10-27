@@ -74,6 +74,9 @@
 | D-12 | Deleting an account is not part of the API | Foreign key restricts deletion if transactions exist; no deletion routes |
 | D-13 | Transaction rows may not be updated/deleted through API | Append-only HTTP surface; DB role/trigger hardening is an optional extension |
 | D-14 | Stable ordering breaks timestamp ties with transaction ID | `ORDER BY created_at DESC, id DESC` |
+| D-15 | Credit balance overflow is rejected | Return `422 BALANCE_LIMIT_EXCEEDED` if the resulting balance exceeds `999999999999999999.99`; persist no changes |
+
+**Credit/debit input decision:** Accept canonical decimal strings without leading-zero integers, signs, exponent notation, or surrounding whitespace. Normalize valid amounts to two fractional digits with string operations. These are project validation choices.
 
 **Precision caveat:** PostgreSQL `NUMERIC(20,2)` may coerce greater-scale direct SQL input. This project rejects amounts with more than two decimals **at the API validation layer** before insertion. The database also enforces positive amounts; direct manual SQL changes are out of application scope.
 
@@ -96,6 +99,8 @@
 | H-13 | Unknown request body fields | Reject in mutation routes rather than silently accepting `balance` or `created_at` |
 | H-14 | Response keys | Use `snake_case` to match the assessment |
 | H-15 | Cross-origin traffic | Restrict backend CORS to configured web origin |
+| H-16 | History snapshot consistency | Existence, count, and page reads share one read-only REPEATABLE READ transaction |
+| H-17 | Strict query integer syntax | Page/limit use positive canonical decimal digits; reject repeated/unknown fields, unsafe integers, and unsafe derived offsets |
 
 ## 5. Frontend assumptions
 

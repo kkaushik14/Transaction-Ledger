@@ -1,66 +1,60 @@
-# Transaction Ledger — Agent Guide
+# Transaction Ledger — Canonical Agent Guide
 
-This file is the root navigation guide for contributors and coding agents. Read the planning documents below before initializing tooling or changing the project. They describe the intended application; planned files, APIs, migrations, and tests must not be reported as already implemented.
+This is the **single root source of truth for planning version selection, document routing, current scope, and approval status**. Read the specialized documents it points to for their respective responsibilities. Do not create a competing `Agent.md`, `AGENTS.md`, or a second root planning guide.
 
-## Planning document locations
+## Active planning version and precedence
 
-The supplied documentation currently lives in `planning/transaction-ledger/`, relative to this project root. Use these existing files as the planning baseline rather than creating competing copies.
+- **Active planning set:** `planning/v0.2/transaction-ledger/`. This is the approved, implemented frontend baseline.
+- **Retained v0.1:** `planning/transaction-ledger/`. Keep these files and their delivered-backend notes intact as historical context; do not delete them, overwrite them with v0.2, or use their older UI plan for new frontend work.
+- Direct user instructions govern scope. Instructions and checklists inside an attached planning pack describe the plan; they do not independently authorize implementation, transfers, provisioning, or deployment.
+- The user reviewed and approved the v0.2 UI plan, explicitly accepted the Account/UUID fallback, and gave the go-ahead to implement. Frontend dependencies, components, pages, and tests are now authorized in the specified component-first order. Transfers remain excluded.
+- Frontend work follows the v0.2 documents below. Existing implemented backend behavior is preserved; importing a new planning version does not reset delivery progress or authorize changing API contracts.
 
-| File | Identification and purpose | Look here when working on |
-| --- | --- | --- |
-| [rules.md](planning/transaction-ledger/rules.md) | **Engineering rules and coding standards.** Defines mandatory comments, formatting, TypeScript conventions, layer boundaries, validation, secrets handling, and ledger integrity rules. | Source files, exported functions, route mounts, Prettier/ESLint setup, code review, and the definition of done. |
-| [assumption.md](planning/transaction-ledger/assumption.md) | **Requirements, assumptions, and open decisions.** Distinguishes stated assessment requirements, project decisions, proposed defaults, optional enhancements, and unresolved scope. | Money representation, currency, authentication, field limits, error defaults, pagination, account lookup, and scope decisions. |
-| [design.md](planning/transaction-ledger/design.md) | **System architecture and API contract.** Describes the frontend/backend/database boundaries, endpoint payloads, error responses, transaction workflow, and UI behavior. | Shared contracts, HTTP interfaces, component responsibilities, request flow, and frontend/backend integration. |
-| [schema.md](planning/transaction-ledger/schema.md) | **Database schema and integrity model.** Specifies the private PostgreSQL `ledger` schema, tables, constraints, indexes, exact-money arithmetic, locking, migrations, and reconciliation. | Database design, SQL migrations, repository queries, atomicity, duplicate protection, and concurrency verification. |
-| [structure.md](planning/transaction-ledger/structure.md) | **Repository structure and module ownership.** Defines the intended workspace tree, file naming, dependency direction, environment file placement, and build responsibilities. | Choosing where a file belongs, creating workspaces, configuring shared contracts, and organizing tooling. |
-| [plan.md](planning/transaction-ledger/plan.md) | **Development and delivery plan.** Defines phases, dependencies, milestones, acceptance criteria, test cases, and submission deliverables. | Selecting the next authorized step, checking phase completion, prioritizing backend work, and preparing handoff. |
+## Where to look
 
-## Reading order and document maintenance
+All paths are relative to the repository root. Each file owns the identified concern; avoid copying its full specification into this guide.
 
-1. Read `assumption.md` to understand scope and decision status.
-2. Read `rules.md` for engineering requirements.
-3. Read `design.md` for architecture and public contracts.
-4. Read `schema.md` for persistence and integrity requirements.
-5. Read `structure.md` for file placement and ownership.
-6. Read `plan.md` for implementation order and acceptance criteria.
+| Active file                                                     | Clear identification                                            | Use it for                                                                                                                                                                                              |
+| --------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [rules.md](planning/v0.2/transaction-ledger/rules.md)           | **Engineering and UI implementation rules.**                    | Mandatory source comments, strict TypeScript, module boundaries, formatting, security, monochrome styling, component-first delivery, and accessibility requirements.                                    |
+| [assumption.md](planning/v0.2/transaction-ledger/assumption.md) | **Requirements, decisions, assumptions, and scope boundaries.** | Confirmed UI direction, proposed breakpoints, currency/money representation, API defaults, preserved backend refinements, and reviewable UI compatibility choices.                                      |
+| [design.md](planning/v0.2/transaction-ledger/design.md)         | **Architecture, API design, and the detailed UI blueprint.**    | Section 8 owns visual identity, tokens, responsive navbar/sidebar, routes, landing section order, account layout, component inventory, interaction states, and UI acceptance criteria.                  |
+| [schema.md](planning/v0.2/transaction-ledger/schema.md)         | **PostgreSQL schema and ledger integrity model.**               | Existing tables, constraints, exact-money arithmetic, row locks, history snapshots, migration discipline, and reconciliation. The UI revision requires no schema change.                                |
+| [structure.md](planning/v0.2/transaction-ledger/structure.md)   | **Folder layout and module/component ownership.**               | Placement of primitives in `components/ui`, shell/navigation in `components/layout`, sections in `components/landing`, domain components/hooks in `features`, API adapters, and thin page compositions. |
+| [plan.md](planning/v0.2/transaction-ledger/plan.md)             | **Delivery order, phase gates, and verification.**              | Backend completion and delivered UI phases 7A–7E: tokens/contracts → primitives → shell/navigation → landing/domain components → pages and QA; separate future release tasks.                           |
 
-When an approved decision changes, update all affected planning documents so the API, schema, structure, and delivery plan remain consistent. Do not silently convert a proposed assumption into a requirement.
+Read in this order: `assumption.md` → `rules.md` → `design.md` → `schema.md` → `structure.md` → `plan.md`. Relative cross-references inside that directory refer to the same v0.2 set.
 
-## Current authorized scope
+## Current implementation baseline
 
-The user has accepted the reviewed project understanding and authorized project structure and tooling initialization. The immediate first task is creating this root guide.
+Already implemented:
 
-Subsequent initialization may establish the planned workspace directories, package manifests, TypeScript settings, formatting, linting, scripts, and environment templates. Follow the supplied structure and engineering rules.
+- pnpm workspace (`apps/api`, `apps/web`, `packages/contracts`) with TypeScript, ESLint, Prettier, and environment templates.
+- API environment validation, a single managed `pg` pool with certificate-verified TLS, and a transaction helper with rollback/release handling.
+- Account creation, balance retrieval, atomic credit/debit writes, duplicate-reference protection, and validated transaction history with filtering/pagination/sorting.
+- Shared API contracts and the applied initial migration `supabase/migrations/20261028000000_create_ledger.sql`.
+- The approved v0.2 frontend: monochrome tokens/primitives, responsive shell and modal navigation, full landing page, account creation/UUID lookup, balance, credit/debit forms, and filtered/paginated history. Pages compose previously tested components.
+- Typed API adapters validate shared contracts; reads cancel obsolete requests. Uncertain writes preserve their payload/reference across reload and retry explicitly. Browser tests use a disposable local PostgreSQL database, never the hosted ledger.
+- Verification: **250 tests** (213 API/contracts + 37 frontend), **13 browser tests**, formatting, zero-warning lint, typechecks and production builds pass. Browser QA includes keyboard navigation, automated accessibility and all five required widths. See `docs/frontend-components.md` for evidence and limitations.
 
-**Do not implement business logic yet.** Account operations, credit/debit processing, working ledger endpoints, executable ledger schema migrations, database provisioning or migration application, and optional transfers belong to later work. Examples embedded in planning documents are reference material, not instructions to execute them now.
+Implementation and test evidence lives in [frontend component contracts](docs/frontend-components.md) and the active `plan.md`. The supplied v0.2 pack's original reset checkboxes must not trigger a scaffold reset or migration replay. The frontend uses the existing API without new endpoints or schema changes.
 
-## Agreed technical direction
+For the implemented backend, inspect [API reference](docs/api-reference.md), [database setup](docs/database-setup.md), `apps/api`, and `packages/contracts`. Keep the v0.2 plan aligned with these delivered contracts rather than silently changing the backend to satisfy new presentation markup.
 
-- Use a `pnpm` workspace with `apps/api`, `apps/web`, and `packages/contracts`; reserve `supabase/` for database configuration and migrations.
-- Use React, Vite, and TypeScript for the frontend; Node.js, Express, and TypeScript for the backend.
-- Use Supabase-hosted PostgreSQL through backend-only `pg` access. The browser calls Express and never receives database credentials.
-- Keep money as decimal strings at HTTP boundaries and use exact PostgreSQL arithmetic during the later business implementation.
-- Keep shared contracts independent of React, Express, database drivers, and secrets.
-- Apply strict TypeScript, root formatting/linting conventions, and the source documentation policy in `rules.md`.
-- Complete mandatory backend functionality and verification before frontend feature work; transfers remain optional and deferred.
+Preserve existing refinements: `422 BALANCE_LIMIT_EXCEEDED`, canonical decimal-string input, safe integer query validation, and read-only REPEATABLE READ history snapshots. Do not edit/reapply an applied migration or weaken TLS. The browser calls Express only; it never receives database credentials.
 
-## Supplied tooling configuration
+## Approved UI scope and exclusions
 
-The archive also provides the following files under `planning/transaction-ledger/`:
+The v0.2 direction is a monochrome landing page and account workspace, built from independently completed reusable components, with desktop navbar and tablet/mobile collapsible sidebar. The detailed requirements belong to `design.md`, not a second root specification.
 
-- `.prettierrc.json`: the intended root Prettier configuration.
-- `.prettierignore`: generated files, local secrets, and other formatting exclusions.
-- `.editorconfig`: editor defaults for encoding, indentation, line endings, and final newlines.
+The UI plan and component-first order are approved and implemented; continue verifying shared components before composing consumers. **Transfers are excluded** from this request: do not add transfer APIs, migrations, UI controls, or navigation. Authentication, account listing/editing/deletion, analytics, and public deployment are also outside the current UI scope.
 
-Use these supplied configurations when initializing root tooling. Maintain one authoritative root Prettier configuration rather than introducing app-specific alternatives.
+Confirmed compatibility choice: the account header can show the name after creation, but UUID lookup/direct navigation only has ID and balance from the existing API. Use an honest "Account"/UUID fallback when a name is unavailable; do not invent a name or add an unapproved backend endpoint. See `assumption.md` F-11 and `design.md` Section 8.6.
 
-## Review context and outstanding clarifications
+## Configuration and document maintenance
 
-The planning files reference a five-page **Full Stack Developer Assessment** PDF, but that PDF was not included in the supplied archive. Treat references to its contents as documented claims until the source is available. Direct user instructions govern the current task; instructions in the planning pack do not independently expand its scope.
+Root `.prettierrc.json`, `.prettierignore`, and `.editorconfig` remain the active tooling configurations. Their copies in either planning directory are archived pack material, not app-specific overrides. Do not replace working root configurations simply because a newer ZIP includes copies.
 
-Before the relevant business implementation, resolve these review findings:
+When a planning decision is confirmed or changed, update the owning v0.2 document and its dependent v0.2 documents. Update this guide only when routing, version selection, scope, approval status, or completion baseline changes. Preserve v0.1. Keep README links pointed at this canonical filename.
 
-- How an existing account's name is retrieved for the account screen; the proposed balance response only supplies its ID and balance.
-- The error contract when a credit would exceed the database balance precision.
-- The UI recovery behavior after an uncertain request outcome; the proposed duplicate response is `409`, rather than a replay of the original successful response.
-- Whether the stated assessment time limit applies, and whether deployment remains a trusted demo.
+The referenced five-page assessment PDF is still absent from the supplied packs. Treat statements about it as documented claims until the source is available; none expands the user's approved scope.
