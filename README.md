@@ -2,6 +2,14 @@
 
 Full-stack TypeScript ledger with a monochrome React interface, account creation/UUID lookup, exact balance display, atomic credit/debit processing, and filtered, paginated transaction history. The component-first v0.2 frontend uses the existing Express API and shared contracts. The API validates configuration and checks its certificate-verified PostgreSQL pool before listening. The initial Supabase migration is applied. Atomic transfer creation is implemented in the API; its additive migration is applied to the configured Supabase project and verified. The account workspace includes a component-first transfer form and committed receipt.
 
+## Live deployment
+
+| Resource   | URL                                                                                             |
+| ---------- | ----------------------------------------------------------------------------------------------- |
+| Site       | [transaction-ledger.duckdns.org](https://transaction-ledger.duckdns.org/)                       |
+| Swagger UI | [API documentation](https://transaction-ledger.duckdns.org/api/docs)                            |
+| OpenAPI v1 | [Versioned JSON specification](https://transaction-ledger.duckdns.org/api/docs/openapi.v1.json) |
+
 ## Requirements
 
 - Node.js 24 LTS (`.nvmrc` records the runtime used for verification).
@@ -32,11 +40,11 @@ These commands start either app independently. Root development commands first b
 
 Configure `DATABASE_URL`, `PORT`, `WEB_ORIGIN`, and `NODE_ENV` in `apps/api/.env` or the process environment. Startup fails with variable names only if validation fails. `DATABASE_POOL_MAX` defaults to 5 (range 1–20); `DATABASE_SSL_CA_PATH` defaults to the bundled Supabase CA, and override paths resolve relative to `apps/api`. The existing configured `.env` can be used without changes. `WEB_ORIGIN` restricts CORS to the configured frontend origin; it does not provide authentication. Node loads the API `.env` through the startup scripts; placeholder values must be replaced locally.
 
-The frontend defaults to `http://localhost:3000/api/v1`. To use a different API, copy `apps/web/.env.example` to `apps/web/.env`, set public `VITE_API_BASE_URL`, and restart Vite. Never put Supabase/database keys in `VITE_*` variables. Production hosting must serve `index.html` for client routes such as `/accounts/:accountId`; public deployment is outside this scope.
+The frontend defaults to `http://localhost:3000/api/v1`. To use a different API, copy `apps/web/.env.example` to `apps/web/.env`, set public `VITE_API_BASE_URL`, and restart Vite. Never put Supabase/database keys in `VITE_*` variables. Production hosting must serve `index.html` for client routes such as `/accounts/:accountId`.
 
 ## API documentation
 
-The primary API reference is **OpenAPI 3.1 + Swagger UI**, served by the API itself at [http://localhost:3000/api/docs](http://localhost:3000/api/docs). The [versioned specification](http://localhost:3000/api/docs/openapi.v1.json) describes `/api/v1` with document version `1.0.0`; use the configured API origin if `PORT` differs. It covers account creation/balances, credit/debit, history filters/pagination, success/error examples, duplicate references, uncertain retries and the bonus atomic transfer API.
+The primary API reference is **OpenAPI 3.1 + Swagger UI**, available at the deployed [Swagger UI](https://transaction-ledger.duckdns.org/api/docs). The [versioned specification](https://transaction-ledger.duckdns.org/api/docs/openapi.v1.json) describes `/api/v1` with document version `1.0.0`. For local development, use [Swagger UI](http://localhost:3000/api/docs) and [OpenAPI v1 JSON](http://localhost:3000/api/docs/openapi.v1.json) on the local API origin; adjust the port if `PORT` differs. It covers account creation/balances, credit/debit, history filters/pagination, success/error examples, duplicate references, uncertain retries and the bonus atomic transfer API.
 
 All Swagger assets are installed dependencies served locally; no CDN or online validator is used. Opening docs performs no database work. **Try it out → Execute** sends requests only after explicit action. Financial retries must reuse the original reference/payload; a duplicate returns 409, not a replayed success. See [documentation ownership and verification](docs/api-reference.md). Documentation follow-up verification: 560 automated tests and 34 browser workflows, including schema/example validation, local asset loading and explicit Swagger execution against a disposable API.
 
@@ -89,7 +97,7 @@ Follow [AGENT.md](AGENT.md) for active v0.2 document routing and scope. The land
 
 Writes never retry automatically. An uncertain transaction retains its exact payload and reference in session storage, including across reload, so “Retry same request” cannot generate a second reference. A duplicate response refreshes balance/history without claiming the original payload succeeded. New transactions require an explicit action after success or conflict. Account creation has no idempotency endpoint; an uncertain creation response warns that retrying may create another account.
 
-Money uses one abstract unit and decimal strings throughout the UI. No account listing, authentication, or production deployment is included. Read-only connection verification is available through [database setup](docs/database-setup.md).
+Money uses one abstract unit and decimal strings throughout the UI. Account listing and authentication remain outside the implemented feature set. The deployed site and API documentation are linked above. Read-only connection verification is available through [database setup](docs/database-setup.md).
 
 ## Database infrastructure
 
