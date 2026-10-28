@@ -3,13 +3,16 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { Button, ButtonLink } from '../src/components/ui/Button';
-import { TextField } from '../src/components/ui/TextField';
-import { TextAreaField } from '../src/components/ui/TextAreaField';
-import { SelectField } from '../src/components/ui/SelectField';
-import { StatusMessage } from '../src/components/ui/StatusMessage';
-import { Pagination } from '../src/components/ui/Pagination';
-import { IconButton } from '../src/components/ui/IconButton';
+import {
+  Button,
+  ButtonLink,
+  TextField,
+  TextAreaField,
+  SelectField,
+  StatusMessage,
+  Pagination,
+  IconButton,
+} from '../src/components/ui/index.js';
 
 describe('UI primitives', () => {
   it('blocks activation and announces busy state during a pending action', async () => {

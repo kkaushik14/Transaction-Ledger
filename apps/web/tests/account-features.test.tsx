@@ -3,10 +3,13 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Link, MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
-import { AccountCreateForm } from '../src/features/accounts/components/AccountCreateForm';
-import { AccountLookupForm } from '../src/features/accounts/components/AccountLookupForm';
-import { AccountPageHeader } from '../src/features/accounts/components/AccountPageHeader';
-import { AccountBalanceCard } from '../src/features/accounts/components/AccountBalanceCard';
+import {
+  AccountCreateForm,
+  AccountLookupForm,
+  AccountPageHeader,
+  AccountBalanceCard,
+} from '../src/features/accounts/index.js';
+
 import { accountId, accountResponse, jsonResponse } from './fixtures';
 /** Destination fixture makes navigation state observable without composing a real page. */
 function Destination() {

@@ -1,6 +1,6 @@
 # Transaction Ledger
 
-Full-stack TypeScript ledger with a monochrome React interface, account creation/UUID lookup, exact balance display, atomic credit/debit processing, and filtered, paginated transaction history. The component-first v0.2 frontend uses the existing Express API and shared contracts. The API validates configuration and checks its certificate-verified PostgreSQL pool before listening. The initial Supabase migration is applied; transfers remain deferred.
+Full-stack TypeScript ledger with a monochrome React interface, account creation/UUID lookup, exact balance display, atomic credit/debit processing, and filtered, paginated transaction history. The component-first v0.2 frontend uses the existing Express API and shared contracts. The API validates configuration and checks its certificate-verified PostgreSQL pool before listening. The initial Supabase migration is applied. Atomic transfer creation is implemented in the API; its additive migration is applied to the configured Supabase project and verified. The account workspace includes a component-first transfer form and committed receipt.
 
 ## Requirements
 
@@ -47,7 +47,9 @@ The frontend defaults to `http://localhost:3000/api/v1`. To use a different API,
 | `planning/v0.2/transaction-ledger` | Active UI design, decisions, structure, rules, and delivery plan                      |
 | `AGENT.md`                         | Planning navigation, engineering boundaries, and unresolved design questions          |
 
-See [frontend component contracts](docs/frontend-components.md) for component responsibilities, state handling, and verification. Bonus transfer modules are deliberately deferred.
+See [frontend component contracts](docs/frontend-components.md) for component responsibilities, state handling, and verification. The API and browser each own a dedicated transfer feature module.
+
+Implemented code folders expose explicit typed `index.ts` entries. Import across folders through `index.js` specifiers, for example `../components/ui/index.js`; TypeScript resolves the source and Node-targeted builds emit the matching JavaScript. Same-folder implementation files import siblings directly, which avoids self-barrel cycles. Public feature facades keep SQL rows, controllers and transaction-intent storage details internal. ESLint rejects cross-folder deep code imports. Startup, diagnostics, test suites, configs, migrations and documentation are not exported through application barrels. See active [structure](planning/v0.2/transaction-ledger/structure.md) and [rules](planning/v0.2/transaction-ledger/rules.md) for ownership and exceptions. Microservice extraction remains future work.
 
 ## Tooling commands
 
@@ -79,7 +81,7 @@ Follow [AGENT.md](AGENT.md) for active v0.2 document routing and scope. The land
 
 Writes never retry automatically. An uncertain transaction retains its exact payload and reference in session storage, including across reload, so “Retry same request” cannot generate a second reference. A duplicate response refreshes balance/history without claiming the original payload succeeded. New transactions require an explicit action after success or conflict. Account creation has no idempotency endpoint; an uncertain creation response warns that retrying may create another account.
 
-Money uses one abstract unit and decimal strings throughout the UI. No transfers, account listing, authentication, or production deployment are included. Read-only connection verification is available through [database setup](docs/database-setup.md).
+Money uses one abstract unit and decimal strings throughout the UI. No account listing, authentication, or production deployment is included. Read-only connection verification is available through [database setup](docs/database-setup.md).
 
 ## Database infrastructure
 
@@ -99,7 +101,7 @@ See [API reference](docs/api-reference.md) for requests, responses, and errors. 
 
 `POST /api/v1/accounts/:accountId/transactions` validates a strict body, then uses one checked-out client for BEGIN → account row lock → duplicate-reference check → exact SQL balance update → immutable ledger insert → response validation → COMMIT. Any failure rolls back. The account row is locked before checking references/funds, and PostgreSQL retains its unique account/reference constraint as a final safeguard. No arithmetic uses JavaScript numbers.
 
-Run `pnpm test` as a non-root user on a supported native platform. The pinned `embedded-postgres` development dependency provides PostgreSQL 17 binaries; its platform-specific postinstall script creates required library symlinks. `pnpm-workspace.yaml` allows only the pinned native packages to run those scripts. If those scripts were previously blocked, run `pnpm --filter @ledger/api rebuild @embedded-postgres/darwin-arm64` on this Mac (use the matching platform package elsewhere). The transaction suite creates a random temporary directory and ephemeral loopback port, starts the cluster, and removes it after closing its pool. It does not need Docker or a Supabase test URL. Sandboxed environments must permit local process execution/listeners. Root execution is intentionally unsupported; the tests never create system users.
+Run `pnpm test` as a non-root user on a supported native platform. The pinned `embedded-postgres` development dependency provides PostgreSQL 17 binaries; its platform-specific postinstall script creates required library symlinks. `pnpm-workspace.yaml` allows only the pinned native packages to run those scripts. If those scripts were previously blocked, run `pnpm --filter @ledger/api rebuild @embedded-postgres/darwin-arm64` on this Mac (use the matching platform package elsewhere). The transaction/transfer suites create a random temporary directory and ephemeral loopback port, starts the cluster, and removes it after closing its pool. It does not need Docker or a Supabase test URL. Sandboxed environments must permit local process execution/listeners. Root execution is intentionally unsupported; the tests never create system users.
 
 Concurrency tests hold an account lock until two independent PostgreSQL sessions are observed waiting, then release both competing HTTP requests. Controlled insert failures verify that preceding balance updates roll back, and reconciliation compares each stored balance with its ledger sum. History tests also verify a read-only snapshot remains stable when a writer commits between the existence check and count/page reads.
 
@@ -108,3 +110,19 @@ Concurrency tests hold an account lock until two independent PostgreSQL sessions
 `GET /api/v1/accounts/:accountId/transactions` supports optional `type=credit|debit`, `page` (default 1), and `limit` (default 20, maximum 100). Results sort by creation time descending, then UUID descending, and include filtered pagination totals. Empty matches and out-of-range pages return empty data; unknown accounts return 404. Strict query validation runs before acquiring a client.
 
 History uses a read-only REPEATABLE READ transaction so count and page rows share a snapshot during concurrent writes. Tests cover both filters, account isolation, all pagination boundaries, deterministic timestamp ties, invalid/repeated query fields, no matching rows, and a write committed while the history count is blocked. The frontend preserves server ordering, resets to page 1 on filter changes, cancels obsolete reads, and refetches history after accepted writes. See [API reference](docs/api-reference.md) for the complete contract.
+
+## Account-to-account transfers
+
+`POST /api/v1/transfers` atomically records one transfer, updates both balances, and appends linked debit/credit entries. It validates distinct account UUIDs and exact positive amounts, locks accounts in deterministic UUID order, rejects source/reference duplicates and ledger-reference collisions, and rolls everything back on insufficient funds, destination overflow, or any later failure. See [API reference](docs/api-reference.md) for request/response examples and precise duplicate semantics. Existing credit/debit/history contracts remain unchanged; linked movements already appear in account history.
+
+`supabase/migrations/20261028050000_add_transfers.sql` is applied to the configured Supabase database. Verified-TLS deployment and 31 read-only checks confirmed schema, matching migration history, permissions and preserved existing data. Both applied migration files are untouched. Fresh databases must apply the full migration chain before using the endpoint. See [database setup](docs/database-setup.md) for deployment and recovery. The transfer UI uses this existing endpoint. Ignore microservice work until explicitly requested.
+
+Verification passes 372 tests (128 contracts, 180 API, 64 frontend) and 17 browser tests, including 53 transfer integration tests and 42 new transfer contract tests. Native fixtures apply every migration in timestamp order. Transfer tests cover upgrades over existing rows, SQL constraints, all write-stage rollbacks, response-validation rollback, opposing transfers, duplicate concurrency, shared source funds, destination capacity and contention with standalone transactions. Each transfer test reconciles stored balances and correlated legs. No hosted ledger data is written by tests.
+
+## Transfer UI and safe retry behavior
+
+The account workspace stacks a separate transfer card below credit/debit controls. Its source UUID is fixed to the selected account; enter the destination UUID, amount and optional description, review the normalized details, then explicitly confirm. Reusable review/receipt components and the feature hook were tested before workspace integration. The UI uses shared contracts, existing monochrome controls and the existing API; no gateway/tokenization, authentication or microservice work was added.
+
+The exact normalized command/reference is persisted before sending. An unavailable session store blocks sending, so reload protection is not silently lost. Pending writes cannot be double-submitted; reload restores unresolved commands without auto-sending. Network/timeout/5xx/invalid or mismatched responses remain unconfirmed. Retry preserves the exact command and reference. Both duplicate codes display a conflict rather than a success receipt; the command remains preserved until the user acknowledges reviewing the account before starting a new transfer.
+
+Known rejection retains editable fields. Confirmed success, conflicts and balance-limit/funds errors refetch the source account/history, resetting history to page 1 while retaining its filter. Receipt balances are snapshots after the transfer; opening the destination performs fresh balance/history reads. Failed refreshes retain the completed receipt and mark the source balance as last confirmed. Retry balance/history performs reads only, never another write. Component/browser tests use isolated fixtures and never send test transfers to hosted Supabase.

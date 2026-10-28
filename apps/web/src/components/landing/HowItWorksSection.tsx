@@ -1,6 +1,6 @@
 /** Three practical steps explain the implemented account/transaction/history workflow. */
-import { Container } from '../ui/Container';
-import { SectionHeading } from '../ui/SectionHeading';
+import { Container, SectionHeading } from '../ui/index.js';
+
 import styles from './landing.module.css';
 const steps = [
   {

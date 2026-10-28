@@ -2,12 +2,14 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect } from 'vitest';
-import { HeroSection } from '../src/components/landing/HeroSection';
-import { FeatureGrid } from '../src/components/landing/FeatureGrid';
-import { HowItWorksSection } from '../src/components/landing/HowItWorksSection';
-import { LedgerPrinciplesSection } from '../src/components/landing/LedgerPrinciplesSection';
-import { GetStartedSection } from '../src/components/landing/GetStartedSection';
-import { FinalCtaSection } from '../src/components/landing/FinalCtaSection';
+import {
+  HeroSection,
+  FeatureGrid,
+  HowItWorksSection,
+  LedgerPrinciplesSection,
+  GetStartedSection,
+  FinalCtaSection,
+} from '../src/components/landing/index.js';
 
 describe('landing sections', () => {
   it('has a clear hero heading, real CTAs, and an honest illustrative preview', () => {

@@ -1,9 +1,11 @@
 /** Integrated route compositions verify API orchestration while reusing completed components. */
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
-import { AppRoutes } from '../src/app/routes';
+import { AppRoutes } from '../src/app/index.js';
 import { accountId, jsonResponse } from './fixtures';
+import type { CreateTransferRequest } from '@ledger/contracts';
 /** Renders actual routes with a controlled location and contract-valid HTTP fixtures. */
 function page(path: string) {
   return render(
@@ -44,6 +46,74 @@ describe('page composition', () => {
     await waitFor(() => expect(screen.getByTestId('account-balance')).toHaveTextContent('100.00'));
     expect(await screen.findByText('No transactions yet')).toBeInTheDocument();
     expect(screen.getByRole('form', { name: 'New transaction' })).toBeInTheDocument();
+    expect(screen.getByRole('form', { name: 'Transfer between accounts' })).toBeInTheDocument();
+  });
+  it('keeps a committed receipt through read failure and retries only the balance read', async () => {
+    const destination = 'bbbbbbbb-0000-4000-8000-000000000002';
+    let balanceReads = 0,
+      writes = 0;
+    const fetcher = vi.fn<typeof fetch>(async (url, init) => {
+      if (init?.method === 'POST') {
+        writes++;
+        const command: CreateTransferRequest = JSON.parse(String(init.body));
+        const transferId = 'cccccccc-0000-4000-8000-000000000003';
+        const leg = {
+          amount: command.amount,
+          reference_id: command.reference_id,
+          description: command.description,
+          transfer_id: transferId,
+          created_at: '2026-10-28T00:00:00.000Z',
+        };
+        return jsonResponse(
+          {
+            data: {
+              transfer: { ...command, id: transferId, created_at: leg.created_at },
+              debit: {
+                ...leg,
+                id: 'dddddddd-0000-4000-8000-000000000004',
+                account_id: accountId,
+                type: 'debit',
+              },
+              credit: {
+                ...leg,
+                id: 'eeeeeeee-0000-4000-8000-000000000005',
+                account_id: destination,
+                type: 'credit',
+              },
+              source_account_balance: '8.50',
+              destination_account_balance: '1.50',
+            },
+          },
+          201,
+        );
+      }
+      if (String(url).endsWith('/balance')) {
+        balanceReads++;
+        if (balanceReads === 2) throw new TypeError('Read unavailable');
+        return jsonResponse({
+          data: { account_id: accountId, balance: balanceReads === 1 ? '10.00' : '8.50' },
+        });
+      }
+      return jsonResponse({
+        data: [],
+        pagination: { page: 1, limit: 20, total_records: 0, total_pages: 0 },
+      });
+    });
+    vi.stubGlobal('fetch', fetcher);
+    page(`/accounts/${accountId}`);
+    const transfer = within(await screen.findByRole('form', { name: 'Transfer between accounts' }));
+    await userEvent.type(transfer.getByLabelText('Destination account ID'), destination);
+    await userEvent.type(transfer.getByLabelText('Transfer amount'), '1.50');
+    await userEvent.click(transfer.getByRole('button', { name: 'Review transfer' }));
+    await userEvent.click(transfer.getByRole('button', { name: 'Confirm transfer' }));
+    expect(await screen.findByText('Balance refresh failed')).toBeInTheDocument();
+    expect(transfer.getByText('Transfer complete')).toBeInTheDocument();
+    expect(screen.getByTestId('account-balance')).toHaveTextContent('10.00');
+    expect(screen.getByText('Last confirmed balance')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Retry balance' }));
+    await waitFor(() => expect(screen.getByTestId('account-balance')).toHaveTextContent('8.50'));
+    expect(writes).toBe(1);
+    expect(transfer.getByText('Transfer complete')).toBeInTheDocument();
   });
   it('recovers from an unknown account without a fabricated balance', async () => {
     vi.stubGlobal(

@@ -1,7 +1,7 @@
 /** Validates untrusted HTTP inputs with shared Zod contracts before controllers run. */
 import type { Request, RequestHandler } from 'express';
 import type { ZodType } from 'zod';
-import { ApiError } from '../errors/api-error.js';
+import { ApiError } from '../errors/index.js';
 
 /** Parses one request source and returns only safe issue metadata on failure. */
 function parseInput<T>(schema: ZodType<T>, input: unknown, source: string): T {

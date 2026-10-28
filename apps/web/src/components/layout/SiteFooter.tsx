@@ -1,7 +1,7 @@
 /** Shared footer with real navigation and accurate demo context instead of placeholder links. */
 import { Link } from 'react-router-dom';
-import { Container } from '../ui/Container';
-import { Icon } from '../ui/Icon';
+import { Container, Icon } from '../ui/index.js';
+
 import { navigationLinks } from './navigation';
 /** Keeps product identity and recovery navigation available on every route. */
 export function SiteFooter() {

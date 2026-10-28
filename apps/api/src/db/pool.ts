@@ -5,7 +5,7 @@
 import { X509Certificate } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import pg, { type PoolConfig } from 'pg';
-import type { ApiEnvironment } from '../config/env.js';
+import type { ApiEnvironment } from '../config/index.js';
 
 /** Builds bounded pool settings; an unreadable, invalid, or expired CA fails startup. */
 export function buildPoolConfig(environment: ApiEnvironment): PoolConfig {

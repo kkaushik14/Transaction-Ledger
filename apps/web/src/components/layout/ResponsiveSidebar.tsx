@@ -1,8 +1,8 @@
 /** Native modal navigation drawer with scroll locking, breakpoint reset, and focus restoration. */
 import { useEffect, useRef, type RefObject } from 'react';
 import { Link } from 'react-router-dom';
-import { IconButton } from '../ui/IconButton';
-import { ButtonLink } from '../ui/Button';
+import { IconButton, ButtonLink } from '../ui/index.js';
+
 import { desktopMediaQuery, navigationLinks } from './navigation';
 /** Drawer inputs remain presentational: layout never fetches account data. */
 export interface ResponsiveSidebarProps {

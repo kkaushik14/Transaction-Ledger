@@ -1,6 +1,6 @@
 /** Tests environment validation and secret-safe errors without loading real credentials. */
 import { describe, expect, it } from 'vitest';
-import { EnvironmentValidationError, parseEnvironment } from '../../src/config/env.js';
+import { EnvironmentValidationError, parseEnvironment } from '../../src/config/index.js';
 
 const valid = {
   DATABASE_URL: 'postgresql://demo:secret@db.example.com:5432/postgres',

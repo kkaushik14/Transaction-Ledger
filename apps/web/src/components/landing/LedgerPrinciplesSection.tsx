@@ -1,6 +1,6 @@
 /** Explains tested integrity properties without implying real banking or unsupported security guarantees. */
-import { Container } from '../ui/Container';
-import { Icon, type IconName } from '../ui/Icon';
+import { Container, Icon, type IconName } from '../ui/index.js';
+
 import styles from './landing.module.css';
 const principles: { icon: IconName; title: string; copy: string }[] = [
   {

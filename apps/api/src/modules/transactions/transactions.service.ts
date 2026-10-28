@@ -8,8 +8,8 @@ import {
   type CreateTransactionResponse,
 } from '@ledger/contracts';
 import type { Pool } from 'pg';
-import { withTransaction } from '../../db/transaction.js';
-import { ApiError } from '../../errors/api-error.js';
+import { withTransaction } from '../../db/index.js';
+import { ApiError } from '../../errors/index.js';
 import { createTransactionsRepository } from './transactions.repository.js';
 
 /** Account-scoped immutable transaction writes and filtered/paginated history reads. */

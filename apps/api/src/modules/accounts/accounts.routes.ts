@@ -1,7 +1,7 @@
 /** Registers account creation and balance reads with server-authoritative input validation. */
 import { Router } from 'express';
 import { accountIdParamsSchema, createAccountRequestSchema } from '@ledger/contracts';
-import { requireJson, validate } from '../../middleware/validate.js';
+import { requireJson, validate } from '../../middleware/index.js';
 import { createAccountsController } from './accounts.controller.js';
 import type { AccountsService } from './accounts.service.js';
 

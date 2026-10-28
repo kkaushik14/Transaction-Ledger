@@ -1,8 +1,6 @@
 /** Capability cards describe only the four implemented backend workflows. */
-import { Container } from '../ui/Container';
-import { SectionHeading } from '../ui/SectionHeading';
-import { Card } from '../ui/Card';
-import { Icon, type IconName } from '../ui/Icon';
+import { Container, SectionHeading, Card, Icon, type IconName } from '../ui/index.js';
+
 import styles from './landing.module.css';
 const features: { icon: IconName; title: string; copy: string }[] = [
   {

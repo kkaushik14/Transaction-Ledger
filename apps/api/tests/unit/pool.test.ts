@@ -1,7 +1,7 @@
 /** Verifies fail-closed TLS configuration and pool limits without opening network connections. */
 import { describe, expect, it, vi } from 'vitest';
-import { parseEnvironment } from '../../src/config/env.js';
-import { buildPoolConfig, createDatabasePool } from '../../src/db/pool.js';
+import { parseEnvironment } from '../../src/config/index.js';
+import { buildPoolConfig, createDatabasePool } from '../../src/db/index.js';
 
 const environment = parseEnvironment({
   DATABASE_URL: 'postgresql://demo:p%40ss@db.example.com:5432/postgres?sslmode=require',

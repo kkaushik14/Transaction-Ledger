@@ -2,7 +2,7 @@
  * Read-only infrastructure smoke check for the configured API pool and helper.
  * Does not create tables or write account/transaction data; never prints credentials.
  */
-import { EnvironmentValidationError, parseEnvironment } from '../config/env.js';
+import { EnvironmentValidationError, parseEnvironment } from '../config/index.js';
 import { createDatabasePool } from './pool.js';
 import { withTransaction } from './transaction.js';
 

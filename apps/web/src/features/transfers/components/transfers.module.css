@@ -1,0 +1,64 @@
+/* Transfer presentation follows shared monochrome tokens and fits existing workspace card widths. */
+.form,
+.review,
+.intro {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+.intro {
+  gap: var(--space-2);
+}
+.intro h2 {
+  font-size: var(--text-xl);
+}
+.intro p,
+.note {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.review h3 {
+  font-size: var(--text-lg);
+}
+.details {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+.details dt {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+.details dd {
+  margin: 0 0 var(--space-2);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.details code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+.money {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.money[data-long='true'] {
+  font-size: var(--text-xs);
+}
+.acknowledge {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  padding-block: var(--space-3);
+}
+.acknowledge input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--color-strong);
+  margin: 2px 0 0;
+}

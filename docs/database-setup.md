@@ -2,6 +2,22 @@
 
 The initial migration is `supabase/migrations/20261028000000_create_ledger.sql`. It creates the private `ledger` schema, accounts and transactions, account-scoped reference uniqueness, validation constraints, and the latest-first history index. It was applied on October 28, 2026 to project `rebnstdnwrwdevnfbszi` using Supabase CLI 2.122.0. The API now includes environment validation, a verified TLS connection pool, and a transaction helper. Account creation and balance retrieval now use this pool through the account repository; atomic credit/debit writes now use the transaction helper and checked-out clients. Transaction history now runs on a single read-only REPEATABLE READ snapshot with matching count/page filters.
 
+## Transfer migration — applied and verified
+
+`supabase/migrations/20261028050000_add_transfers.sql` adds private `ledger.transfers`, source/reference uniqueness and validation constraints, nullable `transactions.transfer_id`, its restricted-deletion foreign key, and a partial unique `(transfer_id,type)` index. The index supports lookup by transfer and at most one leg of each type. Existing standalone rows retain all data and get a null link. Exactly two matching legs and the two balance updates are enforced by the atomic transfer service; there is no database procedure or background worker.
+
+**Status:** applied to the configured Supabase project `rebnstdnwrwdevnfbszi` on October 28, 2026, under the user’s explicit authorization, using Supabase CLI 2.122.0 and certificate/hostname-verified TLS through the configured session pooler. The initial migration and transfer migration files are unchanged. The transfer endpoint can now use its required tables and link; existing endpoint projections are unchanged.
+
+Deployment followed the verified-TLS workflow: read-only preflight confirmed the expected project/database and initial migration history; `supabase db push --dry-run` listed only `20261028050000_add_transfers.sql`; `supabase db push --skip-vault --yes` applied that single migration. No seeds, role scripts or vault changes were included. Credentials were loaded privately from the configured API environment, excluded from tool-call command text and redacted from CLI output. No MCP connection or login token was needed.
+
+Post-deployment verification passed **31 read-only schema checks**: transfer column types/defaults/nullability and `NUMERIC(20,2)` precision; primary/check/source-reference uniqueness constraints; all three restricted-deletion foreign keys; nullable transaction linkage; the partial unique `(transfer_id,type)` index; preserved history index and account/reference uniqueness; and no effective schema/table access for `anon` or `authenticated`, with no PUBLIC table grants. Existing standalone rows have null transfer links. The hosted Data API dashboard setting was not independently inspected; schema/table privilege checks were verified through SQL.
+
+Both direct SQL and `supabase migration list` confirm matching local/remote versions `20261028000000` (`create_ledger`, seven recorded statements) and `20261028050000` (`add_transfers`, four recorded statements). Before/after fingerprints of existing account and transaction payloads match, excluding only the newly added nullable link from the comparison. There were two existing accounts and one transaction; none was changed. The transfers table remains empty. Verification did not call financial mutation endpoints or insert test records into the hosted project.
+
+Native integration tests continue to apply the complete timestamped chain without reading `.env`; the isolated PGlite account suite retains its initial-schema compatibility check. Repeat application is not needed: use migration history to drive future additive migrations.
+
+Recovery: stop using the transfer endpoint if deployment fails and inspect migration history/schema before retrying. Once real transfers exist, keep their records and linked entries intact; prefer a forward corrective migration or disabling the endpoint over dropping columns/tables. Do not delete transfer entries, replay the initial migration, reset balances or rewrite deployed migration files.
+
 ## Environment template
 
 Copy `apps/api/.env.example` to `apps/api/.env` locally. Set `DATABASE_URL` using the project's **Connect** dialog: choose the direct PostgreSQL connection when reachable, or the session pooler when IPv4 compatibility is needed. Use the exact dashboard hostname and username, the database password, and TLS. URL-encode special characters in the password.
@@ -20,7 +36,7 @@ Local configuration was generated with `supabase init` and saved as `supabase/co
 
 The CLI dry run listed only `20261028000000_create_ledger.sql`. It was then applied with `supabase db push --db-url ... --skip-vault --yes`; credentials were read privately from `apps/api/.env`, never printed or committed. The database URL used certificate-verifying TLS options. No project login token or MCP connection was needed. The CLI was installed temporarily outside the repository; use an installed compatible CLI for subsequent migrations.
 
-Migration history now contains version `20261028000000`, name `create_ledger`. Do not replay this file manually or modify it after application. For future migrations, configure a verified TLS connection and run a dry run before `supabase db push`; use `supabase migration list` against the same project to inspect its history.
+The initial deployment recorded version `20261028000000`, name `create_ledger`; the current history also contains `20261028050000`, name `add_transfers`, as verified above. Do not replay either file manually or modify it after application. For future migrations, configure a verified TLS connection and run a dry run before `supabase db push`; use `supabase migration list` against the same project to inspect its history.
 
 ## TLS certificate
 
@@ -51,9 +67,9 @@ The original migration passed 27 checks in a disposable local PostgreSQL-compati
 - Both tables, database-generated IDs/timestamps, the zero balance default, and `NUMERIC(20,2)` columns.
 - Primary keys, foreign key with restricted deletion, check constraints, account-scoped uniqueness, and the history index.
 - No schema usage or table read/write permissions for `anon` or `authenticated`.
-- Both tables are empty; no test financial data was written to the hosted project.
+- At the initial migration check both tables were empty; no test financial data was written. The later transfer deployment preserved the user’s existing rows, as verified above.
 
-Ledger rollback/concurrency tests now run against a disposable native PostgreSQL 17 cluster using the same initial migration. Those tests are distinct from hosted schema checks and never use hosted credentials.
+Ledger rollback/concurrency tests run against disposable native PostgreSQL 17 clusters using the full migration chain. Those tests are distinct from hosted schema checks and never use hosted credentials.
 
 The migration creates tables without `IF NOT EXISTS` so schema/history mismatches fail visibly. Let the CLI migration history control application; do not manually replay a completed migration or rewrite it after deployment. If application fails, inspect migration history and the actual schema before retrying. Correct deployed changes with a new migration. Do not drop ledger tables or reset a hosted database to undo a change containing real data.
 

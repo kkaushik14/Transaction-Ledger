@@ -1,10 +1,8 @@
 /** Shared identity, desktop navigation, and accessible responsive menu trigger. */
 import { useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Container } from '../ui/Container';
-import { ButtonLink } from '../ui/Button';
-import { Icon } from '../ui/Icon';
-import { IconButton } from '../ui/IconButton';
+import { Container, ButtonLink, Icon, IconButton } from '../ui/index.js';
+
 import { DesktopNav } from './DesktopNav';
 import { ResponsiveSidebar } from './ResponsiveSidebar';
 /** Owns only navigation state; drawer state never depends on financial data. */

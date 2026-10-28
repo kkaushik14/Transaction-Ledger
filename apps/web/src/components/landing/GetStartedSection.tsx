@@ -1,9 +1,8 @@
 /** Working account entry composes independently tested create/lookup forms. */
-import { Container } from '../ui/Container';
-import { SectionHeading } from '../ui/SectionHeading';
-import { Card } from '../ui/Card';
-import { AccountCreateForm } from '../../features/accounts/components/AccountCreateForm';
-import { AccountLookupForm } from '../../features/accounts/components/AccountLookupForm';
+import { Container, SectionHeading, Card } from '../ui/index.js';
+
+import { AccountCreateForm, AccountLookupForm } from '../../features/accounts/index.js';
+
 import styles from './landing.module.css';
 /** Provides the actual destinations for hero, navigation, footer, and final CTAs. */
 export function GetStartedSection() {

@@ -2,9 +2,9 @@
 import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
-import { TransactionForm } from '../src/features/transactions/components/TransactionForm';
-import { TransactionHistory } from '../src/features/transactions/components/TransactionHistory';
-import { readPendingIntent } from '../src/features/transactions/hooks/transaction-intent';
+import { TransactionForm, TransactionHistory } from '../src/features/transactions/index.js';
+import { readPendingIntent } from '../src/features/transactions/hooks/index.js';
+
 import { accountId, transactionResponse, jsonResponse } from './fixtures';
 /** Fills a simple valid credit while leaving the generated reference under component control. */
 async function fill() {

@@ -119,14 +119,14 @@ test('creates an account, credits/debits, filters history, rejects overspending,
   await expect(page.getByRole('heading', { level: 1, name: 'QA account' })).toBeVisible();
   await expect(page.getByTestId('account-balance')).toHaveText('0.00');
   await page.getByLabel('Amount', { exact: true }).fill('100.25');
-  await page.getByLabel('Description (optional)').fill('Opening entry');
+  await page.getByLabel('Description (optional)', { exact: true }).fill('Opening entry');
   await page.getByRole('button', { name: 'Add credit', exact: true }).click();
   await expect(page.getByText('Credit recorded', { exact: true })).toBeVisible();
   await expect(page.getByTestId('account-balance')).toHaveText('100.25');
   await page.getByRole('button', { name: 'New transaction', exact: true }).click();
   await page.getByLabel('Transaction type').selectOption('debit');
   await page.getByLabel('Amount', { exact: true }).fill('25.25');
-  await page.getByLabel('Description (optional)').fill('Recorded expense');
+  await page.getByLabel('Description (optional)', { exact: true }).fill('Recorded expense');
   await page.getByRole('button', { name: 'Add debit', exact: true }).click();
   await expect(page.getByText('Debit recorded', { exact: true })).toBeVisible();
   await expect(page.getByTestId('account-balance')).toHaveText('75.00');

@@ -1,8 +1,8 @@
 /** Explicit write state machine keeps new intentions separate from uncertain retries. */
 import { useEffect, useRef, useState } from 'react';
 import type { CreateTransactionRequest, CreateTransactionResponse } from '@ledger/contracts';
-import { createTransaction } from '../../../api/transactions.api';
-import { ApiClientError, errorMessage } from '../../../api/client';
+import { createTransaction, ApiClientError, errorMessage } from '../../../api/index.js';
+
 import { clearPendingIntent, readPendingIntent, savePendingIntent } from './transaction-intent';
 /** Form phases prevent input changes while an unresolved payload/reference must remain identical. */
 export type IntentPhase = 'editing' | 'submitting' | 'uncertain' | 'done' | 'duplicate';

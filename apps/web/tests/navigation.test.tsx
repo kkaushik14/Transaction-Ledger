@@ -3,8 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { SiteHeader } from '../src/components/layout/SiteHeader';
-import { SiteFooter } from '../src/components/layout/SiteFooter';
+import { SiteHeader, SiteFooter } from '../src/components/layout/index.js';
 
 describe('site navigation', () => {
   it('uses real destinations and the same link set in the drawer/footer', () => {

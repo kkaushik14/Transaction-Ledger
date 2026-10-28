@@ -2,9 +2,8 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { accountIdParamsSchema } from '@ledger/contracts';
-import { TextField } from '../../../components/ui/TextField';
-import { Button } from '../../../components/ui/Button';
-import { Icon } from '../../../components/ui/Icon';
+import { TextField, Button, Icon } from '../../../components/ui/index.js';
+
 import styles from './accounts.module.css';
 /** Navigates only after UUID validation; no account-list or authentication endpoint is assumed. */
 export function AccountLookupForm() {

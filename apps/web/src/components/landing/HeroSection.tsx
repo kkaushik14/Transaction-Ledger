@@ -1,8 +1,6 @@
 /** Landing value proposition and working entry CTAs; preview figures are explicitly illustrative. */
-import { Container } from '../ui/Container';
-import { Card } from '../ui/Card';
-import { ButtonLink } from '../ui/Button';
-import { Icon } from '../ui/Icon';
+import { Container, Card, ButtonLink, Icon } from '../ui/index.js';
+
 import styles from './landing.module.css';
 /** Presents actual ledger capabilities without inventing live accounts, metrics, or payment integrations. */
 export function HeroSection() {

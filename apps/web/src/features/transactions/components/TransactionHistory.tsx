@@ -1,13 +1,16 @@
 /** Responsive history view preserves every entry field, filters, and server pagination metadata. */
 import { useRef } from 'react';
 import type { TransactionHistoryResponse } from '@ledger/contracts';
-import type { HistoryFilter } from '../hooks/useTransactions';
-import { SelectField } from '../../../components/ui/SelectField';
-import { LoadingState } from '../../../components/ui/LoadingState';
-import { StatusMessage } from '../../../components/ui/StatusMessage';
-import { Pagination } from '../../../components/ui/Pagination';
-import { Button } from '../../../components/ui/Button';
-import { Icon } from '../../../components/ui/Icon';
+import type { HistoryFilter } from '../hooks/index.js';
+import {
+  SelectField,
+  LoadingState,
+  StatusMessage,
+  Pagination,
+  Button,
+  Icon,
+} from '../../../components/ui/index.js';
+
 import styles from './transactions.module.css';
 /** Formats server UTC times for display only; never reorders the server's latest-first rows. */
 function displayTime(value: string): string {

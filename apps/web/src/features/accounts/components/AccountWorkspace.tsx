@@ -1,14 +1,18 @@
 /** Composes verified domain components and hooks; server reads remain authoritative after every write. */
-import { Card } from '../../../components/ui/Card';
-import { LoadingState } from '../../../components/ui/LoadingState';
-import { StatusMessage } from '../../../components/ui/StatusMessage';
-import { Button, ButtonLink } from '../../../components/ui/Button';
-import { useAccount } from '../hooks/useAccount';
-import { useTransactions } from '../../transactions/hooks/useTransactions';
+import {
+  Card,
+  LoadingState,
+  StatusMessage,
+  Button,
+  ButtonLink,
+} from '../../../components/ui/index.js';
+
+import { useAccount } from '../hooks/index.js';
+import { useTransactions, TransactionForm, TransactionHistory } from '../../transactions/index.js';
+import { TransferForm } from '../../transfers/index.js';
 import { AccountPageHeader } from './AccountPageHeader';
 import { AccountBalanceCard } from './AccountBalanceCard';
-import { TransactionForm } from '../../transactions/components/TransactionForm';
-import { TransactionHistory } from '../../transactions/components/TransactionHistory';
+
 /** Selected-account workspace; parent keys it by UUID so form/read state cannot cross accounts. */
 export function AccountWorkspace({
   accountId,
@@ -26,7 +30,7 @@ export function AccountWorkspace({
   return (
     <>
       <AccountPageHeader accountId={accountId} name={name} />
-      {account.error ? (
+      {account.error && !account.data ? (
         <div className="stack">
           <StatusMessage
             tone="error"
@@ -53,11 +57,31 @@ export function AccountWorkspace({
         <LoadingState label="Loading account balance…" />
       ) : (
         <>
-          <AccountBalanceCard balance={account.data.data.balance} refreshing={account.loading} />
+          <AccountBalanceCard
+            balance={account.data.data.balance}
+            refreshing={account.loading}
+            stale={Boolean(account.error)}
+          />
+          {account.error && (
+            <div className="stack account-status">
+              <StatusMessage tone="error" title="Balance refresh failed">
+                The shown balance is the last confirmed value. Retry updates this view without
+                sending funds.
+              </StatusMessage>
+              <Button variant="secondary" onClick={account.refresh}>
+                Retry balance
+              </Button>
+            </div>
+          )}
           <div className="account-workspace">
-            <Card>
-              <TransactionForm accountId={accountId} onChanged={refresh} />
-            </Card>
+            <div className="stack">
+              <Card>
+                <TransactionForm accountId={accountId} onChanged={refresh} />
+              </Card>
+              <Card>
+                <TransferForm sourceAccountId={accountId} onChanged={refresh} />
+              </Card>
+            </div>
             <Card>
               <TransactionHistory
                 data={history.data}

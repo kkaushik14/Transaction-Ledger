@@ -1,7 +1,7 @@
 /** Central safe error mapping for body parsing, application failures, and known SQL constraints. */
 import type { ErrorRequestHandler } from 'express';
 import type { ApiErrorResponse } from '@ledger/contracts';
-import { ApiError } from '../errors/api-error.js';
+import { ApiError } from '../errors/index.js';
 
 /** Reads a named error property without assuming driver or parser error classes. */
 function property(error: unknown, key: string): unknown {
@@ -13,6 +13,17 @@ function property(error: unknown, key: string): unknown {
 /** Maps expected failures to public errors; all unrecognized failures remain generic 500s. */
 function publicError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
+  if (
+    property(error, 'code') === '23505' &&
+    property(error, 'constraint') === 'transfers_source_reference_unique'
+  ) {
+    // Persistent transfer deduplication remains a backstop to the locked service precheck.
+    return new ApiError(
+      409,
+      'DUPLICATE_TRANSFER',
+      'Reference already used for this source account',
+    );
+  }
   if (error instanceof URIError && property(error, 'status') === 400) {
     return new ApiError(400, 'VALIDATION_ERROR', 'Invalid URL parameter encoding');
   }

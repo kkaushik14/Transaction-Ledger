@@ -1,11 +1,28 @@
 /** Read cancellation, filter pagination resets, and stale-response protection without page composition. */
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { useAccount } from '../src/features/accounts/hooks/useAccount';
-import { useTransactions } from '../src/features/transactions/hooks/useTransactions';
+import { useAccount } from '../src/features/accounts/index.js';
+import { useTransactions } from '../src/features/transactions/index.js';
 import { accountId, jsonResponse } from './fixtures';
 
 describe('read orchestration', () => {
+  it('retains last confirmed data on refresh failure but never carries it into another identity', async () => {
+    const fetcher = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ data: { account_id: accountId, balance: '1.00' } }),
+    );
+    vi.stubGlobal('fetch', fetcher);
+    const view = renderHook(({ id }) => useAccount(id), { initialProps: { id: accountId } });
+    await waitFor(() => expect(view.result.current.data?.data.balance).toBe('1.00'));
+    fetcher.mockImplementation(async () => {
+      throw new TypeError('offline');
+    });
+    act(() => view.result.current.refresh());
+    await waitFor(() => expect(view.result.current.error?.code).toBe('NETWORK_ERROR'));
+    expect(view.result.current.data?.data.balance).toBe('1.00');
+    view.rerender({ id: 'bbbbbbbb-0000-4000-8000-000000000002' });
+    await waitFor(() => expect(view.result.current.loading).toBe(false));
+    expect(view.result.current.data).toBeUndefined();
+  });
   it('ignores a stale balance after the selected account changes', async () => {
     let resolve: ((response: Response) => void) | undefined;
     let oldSignal: AbortSignal | undefined;

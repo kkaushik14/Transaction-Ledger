@@ -6,7 +6,7 @@ import {
   type AccountBalanceResponse,
   type CreateAccountRequest,
 } from '@ledger/contracts';
-import { ApiError } from '../../errors/api-error.js';
+import { ApiError } from '../../errors/index.js';
 import type { AccountsRepository } from './accounts.repository.js';
 
 /** Implemented account use cases; no credit/debit operations are exposed. */

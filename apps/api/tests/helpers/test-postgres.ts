@@ -1,5 +1,5 @@
 /** Disposable local PostgreSQL 17 fixture; never reads .env or connects to hosted databases. */
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
@@ -22,7 +22,7 @@ async function availablePort(): Promise<number> {
   return port;
 }
 
-/** Starts a private cluster with the actual migration; the returned cleanup must always run. */
+/** Starts a private cluster with every timestamped migration in order; cleanup must always run. */
 export async function createTestPostgres(): Promise<{ pool: pg.Pool; stop(): Promise<void> }> {
   const directory = await mkdtemp('/tmp/transaction-ledger-pg-');
   const port = await availablePort();
@@ -39,6 +39,7 @@ export async function createTestPostgres(): Promise<{ pool: pg.Pool; stop(): Pro
     onError: () => {},
   });
   let pool: pg.Pool | undefined;
+  const clientEnds = new Set<Promise<void>>();
   try {
     await postgres.initialise();
     await postgres.start();
@@ -56,22 +57,31 @@ export async function createTestPostgres(): Promise<{ pool: pg.Pool; stop(): Pro
       statement_timeout: 10000,
       application_name: 'ledger-isolated-tests',
     });
+    // pg-pool can resolve end() after removing clients but before their sockets
+    // finish closing. Await actual client end events before stopping PostgreSQL,
+    // otherwise shutdown can emit FATAL errors against already-closing clients.
+    pool.on('connect', (client) => {
+      const ended = new Promise<void>((resolve) => {
+        client.once('end', resolve);
+      });
+      clientEnds.add(ended);
+      void ended.then(() => clientEnds.delete(ended));
+    });
     await pool.query('CREATE ROLE anon; CREATE ROLE authenticated;');
-    await pool.query(
-      await readFile(
-        new URL(
-          '../../../../supabase/migrations/20261028000000_create_ledger.sql',
-          import.meta.url,
-        ),
-        'utf8',
-      ),
-    );
+    const migrations = new URL('../../../../supabase/migrations/', import.meta.url);
+    // Use the actual upgrade chain so existing account/history suites also verify compatibility.
+    for (const filename of (await readdir(migrations))
+      .filter((name) => /^\d+_.*\.sql$/.test(name))
+      .sort()) {
+      await pool.query(await readFile(new URL(filename, migrations), 'utf8'));
+    }
     const database = pool;
     return {
       pool: database,
       async stop() {
         try {
           await database.end();
+          await Promise.all([...clientEnds]);
         } finally {
           try {
             await postgres.stop();
@@ -83,6 +93,7 @@ export async function createTestPostgres(): Promise<{ pool: pg.Pool; stop(): Pro
     };
   } catch (error) {
     await pool?.end();
+    await Promise.all([...clientEnds]);
     try {
       await postgres.stop();
     } finally {

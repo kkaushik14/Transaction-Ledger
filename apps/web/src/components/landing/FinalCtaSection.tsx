@@ -1,7 +1,6 @@
 /** Final CTA returns to real account-entry controls instead of a placeholder destination. */
-import { Container } from '../ui/Container';
-import { ButtonLink } from '../ui/Button';
-import { Icon } from '../ui/Icon';
+import { Container, ButtonLink, Icon } from '../ui/index.js';
+
 import styles from './landing.module.css';
 /** Completes the landing page with a concise actionable next step. */
 export function FinalCtaSection() {

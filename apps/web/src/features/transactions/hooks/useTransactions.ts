@@ -1,7 +1,7 @@
 /** Filter/page orchestration resets pages on filter changes and ignores obsolete history reads. */
 import { useCallback, useState } from 'react';
-import { getTransactionHistory } from '../../../api/transactions.api';
-import { useRemoteResource } from '../../../hooks/useRemoteResource';
+import { getTransactionHistory } from '../../../api/index.js';
+import { useRemoteResource } from '../../../hooks/index.js';
 /** UI filter vocabulary; All omits the API type parameter rather than inventing a server value. */
 export type HistoryFilter = 'all' | 'credit' | 'debit';
 /** Supplies server metadata and explicit filter/page/refresh actions for the history component. */

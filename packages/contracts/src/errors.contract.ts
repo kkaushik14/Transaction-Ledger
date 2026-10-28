@@ -1,11 +1,12 @@
 /** Shared public error envelopes; SQL, credentials, and internal stacks never belong here. */
 import { z } from 'zod';
 
-/** Error codes implemented by the current account/credit/debit API and HTTP boundary. */
+/** Error codes implemented by the account/credit/debit/transfer API and HTTP boundary. */
 export const apiErrorCodeSchema = z.enum([
   'VALIDATION_ERROR',
   'ACCOUNT_NOT_FOUND',
   'DUPLICATE_TRANSACTION',
+  'DUPLICATE_TRANSFER',
   'INSUFFICIENT_BALANCE',
   'BALANCE_LIMIT_EXCEEDED',
   'ROUTE_NOT_FOUND',

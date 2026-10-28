@@ -1,9 +1,8 @@
 /** Public route map composes prebuilt pages inside a single consistent site shell. */
 import { Route, Routes } from 'react-router-dom';
-import { AppShell } from '../components/layout/AppShell';
-import { HomePage } from '../pages/HomePage';
-import { AccountPage } from '../pages/AccountPage';
-import { NotFoundPage } from '../pages/NotFoundPage';
+import { AppShell } from '../components/layout/index.js';
+import { HomePage, AccountPage, NotFoundPage } from '../pages/index.js';
+
 /** Registers only the approved landing/account/recovery routes; no transfer route exists. */
 export function AppRoutes() {
   return (

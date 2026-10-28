@@ -1,6 +1,6 @@
 # API reference
 
-Implemented base URL: `http://localhost:3000/api/v1`. Requests and responses use JSON and `snake_case` keys. Money is represented as decimal strings. Account creation, balance retrieval, atomic credit/debit writes, and transaction history are implemented and consumed by the v0.2 React frontend. Transfers, account listing, editing, and deletion are not implemented.
+Implemented base URL: `http://localhost:3000/api/v1`. Requests and responses use JSON and `snake_case` keys. Money is represented as decimal strings. Account creation, balance retrieval, atomic credit/debit writes, and history are consumed by the v0.2 React frontend. Atomic account-to-account transfer creation is also implemented in the API. The React transfer UI consumes this endpoint; account listing, editing, and deletion remain excluded. The transfer migration is applied and verified on the configured Supabase project; fresh databases need both migrations. See [database setup](database-setup.md).
 
 ## Create an account
 
@@ -88,6 +88,73 @@ Debits exceeding the locked balance return `422 INSUFFICIENT_BALANCE`. Credits e
 
 Transaction history is available through GET as described below. Transaction PUT, PATCH, and DELETE routes remain absent.
 
+## Transfer between accounts
+
+`POST /transfers` with `Content-Type: application/json`:
+
+```json
+{
+  "source_account_id": "aaaaaaaa-0000-4000-8000-000000000001",
+  "destination_account_id": "bbbbbbbb-0000-4000-8000-000000000002",
+  "amount": "25.50",
+  "reference_id": "transfer-001",
+  "description": "Shared expense"
+}
+```
+
+Success: `201 Created`, only after the transfer record, both balance updates and both entries commit:
+
+```json
+{
+  "data": {
+    "transfer": {
+      "id": "cccccccc-0000-4000-8000-000000000003",
+      "source_account_id": "aaaaaaaa-0000-4000-8000-000000000001",
+      "destination_account_id": "bbbbbbbb-0000-4000-8000-000000000002",
+      "amount": "25.50",
+      "reference_id": "transfer-001",
+      "description": "Shared expense",
+      "created_at": "2026-10-28T00:02:00.000Z"
+    },
+    "debit": {
+      "id": "dddddddd-0000-4000-8000-000000000004",
+      "account_id": "aaaaaaaa-0000-4000-8000-000000000001",
+      "type": "debit",
+      "amount": "25.50",
+      "reference_id": "transfer-001",
+      "description": "Shared expense",
+      "transfer_id": "cccccccc-0000-4000-8000-000000000003",
+      "created_at": "2026-10-28T00:02:00.000Z"
+    },
+    "credit": {
+      "id": "eeeeeeee-0000-4000-8000-000000000005",
+      "account_id": "bbbbbbbb-0000-4000-8000-000000000002",
+      "type": "credit",
+      "amount": "25.50",
+      "reference_id": "transfer-001",
+      "description": "Shared expense",
+      "transfer_id": "cccccccc-0000-4000-8000-000000000003",
+      "created_at": "2026-10-28T00:02:00.000Z"
+    },
+    "source_account_balance": "74.75",
+    "destination_account_balance": "26.50"
+  }
+}
+```
+
+Both UUIDs are required, must identify different existing accounts, and are normalized to lowercase. Case variants cannot bypass the self-transfer check. Amount, description and reference rules match standalone transactions: positive exact decimal string, up to 18 integer/two fractional digits, optional description defaulting to `""`, case-sensitive reference preserved exactly. Unknown fields, IDs, timestamps, leg types and client balances are rejected before acquiring a database client. Self-transfers return `400 VALIDATION_ERROR`; missing accounts return `404 ACCOUNT_NOT_FOUND`.
+
+Account locks are acquired in PostgreSQL UUID order, independent of transfer direction. On one checked-out client the service checks duplicates, inserts the transfer identity, debits the source, credits the destination, inserts linked debit/credit entries, validates the correlated response, and commits once. Source overdrafts return `422 INSUFFICIENT_BALANCE`; destination overflow returns `422 BALANCE_LIMIT_EXCEEDED`. Any rejection or failure rolls back all five writes. Standalone credits/debits contend on the same account locks.
+
+Duplicate semantics:
+
+- `(source_account_id, reference_id)` is unique in transfers. Repeating it returns `409 DUPLICATE_TRANSFER`, even with a changed destination/amount/description or exhausted source balance. No original success response is replayed.
+- Both legs preserve the same caller reference. If either participating account already has that reference in its ledger, return `409 DUPLICATE_TRANSACTION` and change nothing. This includes a standalone movement or another transfer's incoming leg. Do not silently generate replacement references.
+- Disjoint account pairs may reuse a reference. Case and surrounding whitespace remain significant.
+- There are no automatic write retries. After an uncertain response, preserve the exact payload and reference. A conflict proves that reference is used; it does not assert an earlier request had the same payload. Reconcile existing history before starting a new intent.
+
+Transfer legs appear in each account's existing filtered/paginated history. Those response shapes remain unchanged, including omission of `transfer_id`; the creation response supplies explicit correlation. No transfer listing, retrieval, update or deletion endpoints are introduced.
+
 ## Retrieve transaction history
 
 `GET /accounts/:accountId/transactions?type=credit&page=1&limit=20`
@@ -143,17 +210,18 @@ Every application, validation, parsing, and unmatched-route error uses this enve
 
 The `details` object can be empty. Validation issues identify fields and issue codes without echoing submitted values. Clients can use the exported shared request schemas for field-level feedback.
 
-| HTTP status | Code                     | Meaning                                                                                                |
-| ----------- | ------------------------ | ------------------------------------------------------------------------------------------------------ |
-| 400         | `VALIDATION_ERROR`       | Invalid name, transaction input, UUID, history query, malformed JSON, or known name constraint failure |
-| 404         | `ACCOUNT_NOT_FOUND`      | No account for a valid UUID                                                                            |
-| 404         | `ROUTE_NOT_FOUND`        | Unregistered path or method, including edit/delete endpoints                                           |
-| 409         | `DUPLICATE_TRANSACTION`  | Reference already used within the same account                                                         |
-| 422         | `INSUFFICIENT_BALANCE`   | Debit would overdraw the account                                                                       |
-| 422         | `BALANCE_LIMIT_EXCEEDED` | Credit would exceed NUMERIC(20,2) balance capacity                                                     |
-| 413         | `PAYLOAD_TOO_LARGE`      | JSON body exceeds the 16 KiB parser limit                                                              |
-| 415         | `UNSUPPORTED_MEDIA_TYPE` | Creation request lacks JSON content type, or request encoding is unsupported                           |
-| 500         | `INTERNAL_ERROR`         | Unexpected error; generic public message, no SQL, credentials, or stack traces                         |
+| HTTP status | Code                     | Meaning                                                                                        |
+| ----------- | ------------------------ | ---------------------------------------------------------------------------------------------- |
+| 400         | `VALIDATION_ERROR`       | Invalid name, transaction/transfer input, self-transfer, UUID, history query or malformed JSON |
+| 404         | `ACCOUNT_NOT_FOUND`      | No account for a valid UUID                                                                    |
+| 404         | `ROUTE_NOT_FOUND`        | Unregistered path or method, including edit/delete endpoints                                   |
+| 409         | `DUPLICATE_TRANSACTION`  | Reference already used within the same account                                                 |
+| 409         | `DUPLICATE_TRANSFER`     | Transfer reference already used for this source account                                        |
+| 422         | `INSUFFICIENT_BALANCE`   | Debit or transfer would overdraw its source                                                    |
+| 422         | `BALANCE_LIMIT_EXCEEDED` | Credit or transfer would exceed destination/account balance capacity                           |
+| 413         | `PAYLOAD_TOO_LARGE`      | JSON body exceeds the 16 KiB parser limit                                                      |
+| 415         | `UNSUPPORTED_MEDIA_TYPE` | Creation request lacks JSON content type, or request encoding is unsupported                   |
+| 500         | `INTERNAL_ERROR`         | Unexpected error; generic public message, no SQL, credentials, or stack traces                 |
 
 Shared schemas and inferred DTOs are exported from `@ledger/contracts`. Response schemas also verify database projections before sending successful responses; unexpected persistence-shape failures return a generic 500 rather than exposing internal validation errors.
 
@@ -163,4 +231,6 @@ CORS allows browser access from the configured `WEB_ORIGIN`, with GET/POST/OPTIO
 
 `pnpm test` runs shared-contract tests, API infrastructure unit tests, and Supertest HTTP-to-SQL account and transaction tests. Account integration tests apply the actual initial migration to a fresh in-memory PGlite database and close it afterward. They do not load `.env` or mutate the hosted Supabase database. Transaction tests use a separate disposable native PostgreSQL 17 cluster with independent `pg` connections. They force balance-update/insert rollback, observe actual account-lock contention for concurrent debits/duplicates, test exact maximum balances, and reconcile balances with ledger totals. History tests use a disposable PostgreSQL 17 cluster to verify filters, totals, page boundaries, timestamp/UUID ordering, invalid input, and snapshot consistency while another session commits a movement. PGlite verifies account SQL/defaults/constraints and the HTTP path; it does not replace hosted PostgreSQL/network/TLS verification, which is covered separately by the database check command and documented connection checks.
 
-Current verification: 86 shared-contract tests and 127 API tests pass (213 total), including actual PostgreSQL row-lock contention, forced insert rollback, duplicate persistence across application instances, maximum-balance handling, and ledger reconciliation. All successful write tests use disposable local databases; hosted ledger data was not changed.
+Current verification: 128 shared-contract tests and 180 API tests pass (308 backend/contract tests); 64 frontend tests also pass (372 total). Transfer coverage adds 42 contract cases and 53 native PostgreSQL integration cases: migration over existing data, constraint/permission checks, forced failure at each write and during response validation, duplicate persistence, opposing transfers, competing outgoing/incoming movements and standalone-operation contention. Each test reconciles balances and verifies every transfer has exactly two matching legs. Native fixtures apply all migrations in timestamp order. Tests never mutate the hosted Supabase ledger.
+
+The transfer browser UI validates against the shared command schema and verifies that a success response matches the preserved request. It does not change server semantics: 409 remains a conflict, not a replayed success. Explicit identical retries preserve reference identity, and uncertain outcomes are not labelled rolled back. The 17 browser tests include actual source/recipient ledger flows, committed-response loss, known errors and read-refresh failure. No new HTTP routes, contracts or schema changes were needed for the UI.

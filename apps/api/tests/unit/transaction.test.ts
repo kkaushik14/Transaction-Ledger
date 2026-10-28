@@ -1,7 +1,7 @@
 /** Exercises transaction ownership, failures, and release without touching hosted ledger data. */
 import type { PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
-import { withTransaction } from '../../src/db/transaction.js';
+import { withTransaction } from '../../src/db/index.js';
 
 /** Constructs a narrow pg fixture; the cast supplies unused driver members only in tests. */
 function fixture() {

@@ -1,6 +1,6 @@
 # Project Assumptions, Decisions, and Open Questions
 
-> Project: Transaction Ledger | Version: 0.2 | Status: UI decisions approved and implemented; optional work remains deferred
+> Project: Transaction Ledger | Version: 0.2 | Status: Transfer API and UI implemented; microservice work excluded
 >
 > The five-page **Full Stack Developer Assessment** is the functional source. User-specified stack and engineering conventions are binding project choices. Items labeled **Assumption** below fill gaps in the assessment and should be reviewed before implementation.
 
@@ -44,7 +44,7 @@
 | U-10 | Landing page includes header, footer, hero and working CTA sections                   | Implement structured landing content, not only the account forms                                                  |
 | U-11 | Component-first UI development is mandatory                                           | Finish primitives, layouts and feature/section components before composing pages                                  |
 | U-12 | Review v0.2 UI planning before implementation                                         | Summarize the UI plan and wait for the user's explicit go-ahead before changing frontend code                     |
-| U-13 | Transfers are excluded from the current request                                       | Do not add transfer routes, migrations, controls, or navigation                                                   |
+| U-13 | Transfer API, UI and integrity tests are now explicitly authorized                    | API/migration are delivered; implement the component-first UI using existing endpoints, without microservices     |
 
 ## 2. Architecture assumptions
 
@@ -145,7 +145,7 @@ The user approved the v0.2 UI plan, component-first order, breakpoints and Accou
 - Leaving account entry while a creation request is pending does not navigate the user back when it completes. Account creation is not idempotent; an uncertain response warns that retrying may create another account.
 - Show loading, invalid-input, empty-history, success, duplicate, insufficient-funds, and unexpected-error states with text/icons, not color alone.
 - Client-side form validation helps UX but never replaces API validation. Refresh balance and history after writes; do not infer authoritative money state in React.
-- No authentication, account list, admin console, charts, third-party payment processing, or transfer UI in the initial scope. The landing page must not imply that those capabilities exist.
+- No authentication, account list, admin console, charts, third-party payment processing, in the initial scope; transfer UI was separately authorized and implemented. The landing page must not imply that those capabilities exist.
 - Public hosting without authentication is **not** approved by this design. The initial implementation is a controlled demonstration until access control is decided.
 
 ## 6. Operations and environment assumptions
@@ -159,14 +159,20 @@ The user approved the v0.2 UI plan, component-first order, breakpoints and Accou
 - Run integration tests on a local or dedicated test database/Supabase project, not the live hosted application database.
 - The published frontend and backend deployment platform is **undecided**; README must explain local execution regardless.
 
-## 7. Bonus transfer assumptions (defer until base product passes)
+## 7. Approved transfer backend decisions
 
 - A transfer is a single atomic operation between two _different_ existing accounts.
 - Require positive amount and sufficient source funds; reject self-transfers.
 - Acquire row locks for both accounts in deterministic UUID order to avoid deadlock.
 - Write one source debit and one destination credit plus both balance changes in a single PostgreSQL transaction.
-- To guarantee request idempotency and traceability, a later migration may introduce a `transfers` table and `transfer_id` fields on ledger entries, described in `schema.md`.
-- No transfer UI is required until the optional API is functional and tested.
+- To guarantee request idempotency and traceability, the new additive migration introduces a `transfers` table and nullable `transfer_id` fields on ledger entries, described in `schema.md`.
+- The user’s latest clarification explicitly authorizes only the component-first transfer UI using the existing endpoint. Gateway/tokenization/authentication additions are outside this narrowed request; ignore microservice work until explicitly requested.
+- Shared transfer contracts normalize UUID case before distinct-account validation, and reuse the existing amount/reference/description validators.
+- Transfer references are unique per source account and conflicts return `409 DUPLICATE_TRANSFER`, including changed payloads and exhausted-source retries; successful responses are not replayed.
+- Both legs preserve the caller reference. An existing reference on either account rejects the entire transfer with `409 DUPLICATE_TRANSACTION`. The same reference is reusable for disjoint account pairs.
+- Both accounts are locked using PostgreSQL UUID ordering before duplicate/funds checks. Destination capacity is guarded just like standalone credits. Every failure rolls back the transfer identity, both balances and both legs.
+- The creation response returns transfer metadata, linked debit/credit entries and both committed balances. Existing history/standalone DTOs remain unchanged; history projects the normal leg fields without `transfer_id`.
+- After explicit user authorization, the migration was applied to the configured Supabase project and verified using read-only schema/history/permission checks. Existing account and transaction payload fingerprints are unchanged; no hosted financial test writes were made.
 
 ## 8. Open decisions requiring review
 
@@ -179,10 +185,12 @@ These questions are intentionally not disguised as assessment requirements:
 | Should money support multiple currencies?                                      | No; one abstract unit                                                       | Medium     |
 | Should a user-supplied description be required?                                | Optional, stored as empty string when absent                                | Low        |
 | Should account listing be mandatory for the UI?                                | No; UUID lookup is sufficient for the MVP                                   | Medium     |
-| Is the bonus transfer in scope for this version?                               | Explicitly excluded by the user; separate authorization required            | Medium     |
+| Is the bonus transfer in scope for this version?                               | Transfer backend and component-first UI authorized and implemented          | Medium     |
 | Does deployment require Docker, CI/CD, or a particular host?                   | Not specified; local-first                                                  | Low        |
 
 ## 9. Change control
+
+Confirmed follow-up decision: use typed `index.ts` folder entries (emitted as `index.js` for Node-targeted builds), explicit public exports and cross-folder entry imports. Keep existing cohesive responsibilities, avoid self-barrel cycles and unnecessary segmentation, and leave microservice extraction for a separately authorized future implementation. No API or database behavior changes are needed.
 
 When an assumption is confirmed or changed:
 
@@ -192,3 +200,5 @@ When an assumption is confirmed or changed:
 4. Document any backward-incompatible API/schema change and provide a migration plan.
 
 References: Assessment PDF pages 1–5; Supabase connectivity https://supabase.com/docs/guides/database/connecting-to-postgres; Supabase SQL migrations https://supabase.com/docs/guides/local-development/database-migrations.
+
+Transfer UI follow-up: fixed source UUID, destination UUID validation including self-transfer case variants, exact positive amount, optional description, review before confirmation and a receipt only for a correlated committed response. Preserve the exact command/reference before HTTP and across reload; block sending if session persistence fails. Both duplicate codes are conflicts, not successful replays. Keep conflict commands until explicit user acknowledgement before a new intent. Read refreshes are separate from writes; retain a confirmed receipt when reads fail and label retained balances as stale. Source history resets to page 1 while keeping its filter; recipient navigation fetches current data. No backend changes or new migrations are needed.

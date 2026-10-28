@@ -1,6 +1,6 @@
 # System Design and API Contract
 
-> Project: Transaction Ledger | Version: 0.2 | Status: Approved UI implemented; backend contracts preserved
+> Project: Transaction Ledger | Version: 0.2 | Status: Approved account/transfer UI and backend implemented; existing DTOs preserved
 >
 > The **Full Stack Developer Assessment** defines the mandatory ledger behaviors (pages 1–5). The browser interface and the selected technology stack are user-requested extensions. Endpoint URLs, payload shapes, money representation, and error codes below are explicit project assumptions documented in `assumption.md`.
 
@@ -39,10 +39,12 @@ Build a clear, extensible full-stack demonstration of a transaction ledger. An a
 
 ### Bonus / deferred
 
-- Atomic money transfer API.
+- Microservices and additional gateway/tokenization infrastructure; these are outside the narrowed transfer UI request.
 - Account listing, authentication/roles, exports, analytics, background workers, payment providers, audit/admin console, full production deployment.
 
 ## 3. Architecture overview
+
+Folder boundaries use explicit `index.ts` entries and `.js` specifiers; parent folders compose child entries. Consumers use the responsible module/feature entry, while sibling implementation files import directly to keep the graph acyclic. Runtime startup stays separate from reusable factories. This preserves the existing layers and injectable Express application without introducing microservices, new packages or service communication. `structure.md` §3 maps the concrete entries, and `rules.md` §3.1 owns the import convention.
 
 ```text
 +-----------------------------+
@@ -261,7 +263,7 @@ The implemented HTTP boundary also returns `404 ROUTE_NOT_FOUND`, `413 PAYLOAD_T
 
 - `GET /health`: optional operational liveness endpoint, outside the assessment. Do not expose database credentials or private diagnostics.
 - `GET /accounts`: **optional future extension** for account selection; the initial UI must work without it.
-- `POST /transfers`: **bonus only**, described below.
+- `POST /transfers`: atomic transfer creation, described below.
 - No `PUT`, `PATCH`, or `DELETE` endpoints for transactions.
 
 ## 7. Critical credit/debit write flow
@@ -409,7 +411,7 @@ AppShell
 
 Desktop may show form and history as adjacent columns when space allows; tablet/mobile should stack them without reducing readable font size or hiding required fields. The history view may use a table at desktop width and a semantic card/list presentation on mobile; preserve all required data and access to filters/pagination. Long UUIDs must wrap or be truncated with a usable copy action, not overflow cards.
 
-No account listing, account login, transaction editing, analytics dashboard or transfer UI is required for this baseline. The existing UUID lookup is the deliberate navigation path to an account.
+No account listing, account login, transaction editing or analytics dashboard is required. Transfer UI is now separately authorized and implemented within the account workspace. The existing UUID lookup is the deliberate navigation path to an account.
 
 **Approved API compatibility:** Creating an account returns its name, while the existing balance read returns only account ID and balance. An account opened by UUID or direct URL with no creation metadata uses "Account" plus the UUID. The user explicitly approved this fallback; it is implemented without a new API. Name display is optional when genuinely known; no local value is authoritative for money.
 
@@ -498,11 +500,17 @@ Use proper labels, semantic landmarks (`header`, `nav`, `main`, `footer`), a ski
 - No raw SQL errors, credentials, connection URLs, or stack traces in client responses.
 - Health endpoint and graceful shutdown of the HTTP server and DB pool are useful operational additions.
 
-## 10. Optional transfer design
+## 10. Implemented transfer backend
 
-**Only after all required APIs and tests pass.** Proposed `POST /api/v1/transfers` accepts `source_account_id`, `destination_account_id`, `amount`, `reference_id`, and optional `description`.
+The user explicitly authorized `POST /api/v1/transfers` with `source_account_id`, `destination_account_id`, positive decimal-string `amount`, preserved `reference_id`, and optional `description`. Strict shared validation rejects unknown/server-owned fields and same-account UUID case variants before acquiring a database client. Transfer UI is now separately authorized and implemented using this endpoint; ignore microservice work until requested.
 
-The service must validate both accounts and non-self transfer, lock both account rows in consistent UUID order, reject insufficient funds, update both balances, insert two correlated ledger entries, and commit once. A failure anywhere must roll back all four writes. An optional `transfers` record gives a stable ID and idempotency constraint as specified in `schema.md`. Implement and test transfer-specific duplicate handling rather than reusing an unsafe shortcut.
+The service uses one checked-out client and transaction: lock both account rows in PostgreSQL UUID order; verify both exist; check source/reference transfer duplication and ledger collisions on either account; insert one transfer record; guard and update source and destination balances; insert linked debit and credit; validate the correlated response; commit once. A failure at any step rolls back every write, including response validation after all inserts. Opposing transfers use the same lock order; standalone transactions share the account locks.
+
+`201` returns `{ data: { transfer, debit, credit, source_account_balance, destination_account_balance } }`; each leg includes `transfer_id`. Existing account/transaction/history response shapes are unchanged, and transfer legs naturally appear in account history without changing its projection. `docs/api-reference.md` owns the full examples.
+
+`400 VALIDATION_ERROR` covers invalid/self transfers, `404 ACCOUNT_NOT_FOUND` missing participants, `409 DUPLICATE_TRANSFER` the same source/reference even for a changed payload, `409 DUPLICATE_TRANSACTION` an existing ledger reference on either participant, `422 INSUFFICIENT_BALANCE` source overdraft, and `422 BALANCE_LIMIT_EXCEEDED` destination overflow. References remain case-sensitive and exact; both legs preserve the caller reference. Disjoint account pairs may reuse it. No automatic retries or original-response replay occur.
+
+`20261028050000_add_transfers.sql` adds private transfer persistence, nullable links on existing transactions, and a partial unique `(transfer_id,type)` index. It is tested locally, including upgrade over populated initial tables, and is now applied to the configured Supabase project under explicit user authorization. Read-only checks verified its schema and matching local/remote migration history, with existing financial data unchanged. The initial migration is unchanged. Exactly two matching legs is a cross-row service invariant verified by rollback/concurrency/reconciliation tests.
 
 ## 11. Quality attributes and test strategy
 
@@ -519,6 +527,14 @@ The service must validate both accounts and non-self transfer, lock both account
 
 ## 12. Design exclusions and change control
 
-No background job processing is required: credit/debit transactions must complete synchronously to provide a definite outcome. No caching of balances is needed. Do not redesign the ledger around eventual consistency. Any future authentication, multi-currency support, bulk imports, transfers, or account deletion requires corresponding design, database, and test updates.
+No background job processing is required: credit/debit transactions must complete synchronously to provide a definite outcome. No caching of balances is needed. Do not redesign the ledger around eventual consistency. Any future authentication, multi-currency support, bulk imports or account deletion requires corresponding design, database, and test updates.
 
 **Cross-references:** `rules.md` (code standards), `assumption.md` (decisions and open questions), `schema.md` (PostgreSQL and lock design), `structure.md` (ownership), `plan.md` (implementation milestones).
+
+## Transfer UI follow-up
+
+The existing Express boundary and deployed POST /api/v1/transfers remain unchanged. Within AccountWorkspace, stack the existing transaction card and a transfer card beside history on desktop; retain single-column tablet/mobile composition. Source identity is fixed to the route; use Account/UUID labels when names are unavailable. The independently tested TransferReview, TransferReceipt and TransferForm reuse shared controls/tokens, then compose into the workspace. API adapters and the useTransferIntent hook own HTTP/lifecycle details; all folders expose index.ts entries.
+
+States are editing, reviewing, submitting, uncertain, success and conflict. Review shows the immutable normalized command; confirmation persists it before HTTP. Only 201 with a correlated shared-contract response becomes success. Timeouts/network/5xx/invalid receipts stay uncertain and preserve identical retry; no automatic resend or new reference is generated. A conflict never fabricates success and requires explicit account-review acknowledgement before another intent. Known rejection retains editable fields.
+
+Success/conflicts/balance rejections refresh authoritative source reads; destination navigation loads fresh data. Receipt balance snapshots are labelled after transfer. A read failure retains the receipt and last confirmed balance with explicit stale feedback; read retry cannot invoke the write path. Tests cover storage, timeout, duplicate, late-response, account-switch, refresh and actual local API/database behavior. No gateway, tokenization, authentication, backend, contract or migration changes accompany this UI.

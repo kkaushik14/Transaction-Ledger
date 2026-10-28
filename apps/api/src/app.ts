@@ -1,17 +1,20 @@
-/** Composes account, credit/debit, and history HTTP routes with validation, restricted CORS, and safe centralized errors. */
+/** Composes account, transaction/history and atomic transfer routes with validation, CORS and safe errors. */
 import express, { type Express } from 'express';
 import cors from 'cors';
 import type { Pool } from 'pg';
-import { createTransactionsRouter } from './modules/transactions/transactions.routes.js';
-import { createTransactionsService } from './modules/transactions/transactions.service.js';
-import { ApiError } from './errors/api-error.js';
-import { errorHandler } from './middleware/error-handler.js';
-import { createAccountsRouter } from './modules/accounts/accounts.routes.js';
 import {
+  createTransactionsRouter,
+  createTransactionsService,
+  createAccountsRouter,
   createAccountsRepository,
   type AccountDatabase,
-} from './modules/accounts/accounts.repository.js';
-import { createAccountsService } from './modules/accounts/accounts.service.js';
+  createAccountsService,
+  createTransfersRouter,
+  createTransfersService,
+} from './modules/index.js';
+
+import { ApiError } from './errors/index.js';
+import { errorHandler } from './middleware/index.js';
 
 /** Supplies explicit infrastructure; application creation never reads environment secrets. */
 export interface AppDependencies {
@@ -19,7 +22,7 @@ export interface AppDependencies {
   webOrigin: string;
 }
 
-/** Builds an isolated account/transaction API, leaving pool ownership and shutdown to startup. */
+/** Builds the injected account/transaction/transfer API, leaving pool ownership and shutdown to startup. */
 export function createApp({ database, webOrigin }: AppDependencies): Express {
   const app = express();
   app.disable('x-powered-by');
@@ -41,6 +44,8 @@ export function createApp({ database, webOrigin }: AppDependencies): Express {
   // Mount credit/debit writes and history under the same account prefix; the service owns
   // one checked-out client and atomic boundary for every ledger movement.
   app.use('/api/v1/accounts', createTransactionsRouter(createTransactionsService(database)));
+  // Transfer creation uses its own strict HTTP boundary and one two-account transaction.
+  app.use('/api/v1/transfers', createTransfersRouter(createTransfersService(database)));
   // Unmatched paths, including transaction editing/deletion, use JSON errors.
   app.use((_request, _response, next) => {
     next(new ApiError(404, 'ROUTE_NOT_FOUND', 'Route not found'));

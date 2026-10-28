@@ -1,6 +1,6 @@
 # Database Schema, Migrations, and Integrity Model
 
-> Project: Transaction Ledger | Version: 0.2 | Database: Supabase-hosted PostgreSQL; unchanged by the frontend
+> Project: Transaction Ledger | Version: 0.2 | Database: Supabase-hosted PostgreSQL; additive transfer migration applied and verified
 >
 > The PDF specifies account/transaction fields and invariants. SQL types, private schema, constraints, indexes, migration tooling, and bonus transfer persistence are documented engineering decisions. **This is the schema specification; the initial migration `supabase/migrations/20261028000000_create_ledger.sql` is already authored, applied, and verified. Do not replay or edit it for this UI revision.**
 
@@ -229,35 +229,19 @@ Expected result is **zero rows**. This query is a diagnostic; do not use it to s
 - An existing account with no records returns `data: []` and `total_pages: 0`.
 - History reads now execute account existence, count, and page selection on one client in a read-only `REPEATABLE READ` transaction. This implements the proposed snapshot-consistency refinement so a concurrent commit cannot make totals disagree with page rows within one response. Different page requests still use independent snapshots.
 
-## 10. Bonus transfer schema — separate later migration
+## 10. Approved transfer schema — additive migration
 
-**Do not include this in the first migration unless the optional transfer API is approved.** For full traceability and retry protection, introduce:
+The user authorized the transfer backend. `supabase/migrations/20261028050000_add_transfers.sql` is implemented, tested locally, and applied to the configured Supabase project under explicit user authorization. Thirty-one read-only checks verified columns/defaults, constraints, linkage/indexes and privileges; SQL and CLI migration histories match, and existing account/transaction fingerprints are unchanged. The original deployed migration remains unchanged. The migration adds:
 
-```sql
--- Optional transfer identity/idempotency table for a later migration.
-CREATE TABLE ledger.transfers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  source_account_id UUID NOT NULL REFERENCES ledger.accounts(id) ON DELETE RESTRICT,
-  destination_account_id UUID NOT NULL REFERENCES ledger.accounts(id) ON DELETE RESTRICT,
-  amount NUMERIC(20, 2) NOT NULL CHECK (amount > 0),
-  description TEXT NOT NULL DEFAULT '',
-  reference_id VARCHAR(128) NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT transfers_different_accounts CHECK (source_account_id <> destination_account_id),
-  CONSTRAINT transfers_reference_not_blank CHECK (length(btrim(reference_id)) > 0),
-  CONSTRAINT transfers_description_length CHECK (char_length(description) <= 500),
-  CONSTRAINT transfers_source_reference_unique UNIQUE (source_account_id, reference_id)
-);
+- `ledger.transfers`: generated UUID/time, distinct source and destination account foreign keys with restricted deletion, positive `NUMERIC(20,2)` amount, optional description bounded at 500 characters, nonblank reference bounded at 128 characters, and `UNIQUE(source_account_id,reference_id)`. Table permissions are revoked from PUBLIC, anon and authenticated.
+- Nullable `ledger.transactions.transfer_id` referencing the transfer with restricted deletion; pre-existing standalone rows get null and retain their data.
+- Partial unique index `transactions_transfer_type_unique` on `(transfer_id,type)` where the link is nonnull. It both supports transfer lookup and limits each transfer to at most one debit and one credit.
 
--- Link the two immutable transaction entries to their single transfer.
-ALTER TABLE ledger.transactions
-  ADD COLUMN transfer_id UUID REFERENCES ledger.transfers(id) ON DELETE RESTRICT;
-CREATE INDEX transactions_transfer_id_idx
-  ON ledger.transactions (transfer_id)
-  WHERE transfer_id IS NOT NULL;
-```
+The actual migration is the executable schema source. Exactly two matching entries is a cross-row invariant enforced by the atomic service and reconciliation tests, rather than additional triggers.
 
-Implementation sequence within one DB transaction: lock both accounts in sorted-ID order, verify funds, insert transfer record, update both balances, insert one debit and one credit with their corresponding account IDs, shared `transfer_id`, and matching per-account reference. Commit only when **all** succeed. Add `CHECK`/unique constraints where feasible, but note that guaranteeing exactly two balanced entries is a cross-row invariant enforced by the atomic service and tests unless additional database triggers are introduced.
+Within one checked-out transaction, lock both accounts in PostgreSQL UUID order, verify their existence, check transfer and ledger reference collisions, insert transfer identity, update the source and destination using guarded exact SQL, insert debit and credit with a shared link/reference and matching amount/description, validate their correlated response, and commit once. Missing accounts, insufficient funds, destination overflow, collisions or unexpected failures roll back all five writes. Retried source/reference pairs conflict before funds checks, including changed payloads. Existing standalone reference uniqueness is preserved on both participant accounts.
+
+Local tests cover upgrades over populated initial tables, table grants, direct constraints/index/foreign-key backstops, all write-stage failures, response-validation rollback, opposing transfers and contention with standalone transactions. Native fixtures apply migrations in timestamp order; none reads hosted credentials. See `docs/database-setup.md` for controlled deployment, verification and forward-correction recovery. Never drop transfer data or rewrite applied migrations as a rollback.
 
 ## 11. Migration and environment workflow
 
@@ -281,7 +265,7 @@ Implementation sequence within one DB transaction: lock both accounts in sorted-
 - [x] History sorted latest-first with stable tie-break, filters and pagination (verified in isolated PostgreSQL tests).
 - [ ] Reconciliation query returns no mismatches after test cases.
 - [ ] Production DB credentials are not in source or frontend build.
-- [ ] Bonus transfer tables are absent until optional scope is approved.
+- [x] Approved transfer migration is verified locally, applied to hosted Supabase and verified with read-only schema/history/data-preservation checks.
 
 ## 13. References
 

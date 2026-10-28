@@ -1,7 +1,6 @@
 /** Recoverable route/identifier error screen composed from the shared shell primitives. */
-import { Container } from '../components/ui/Container';
-import { ButtonLink } from '../components/ui/Button';
-import { Icon } from '../components/ui/Icon';
+import { Container, ButtonLink, Icon } from '../components/ui/index.js';
+
 /** Keeps malformed routes useful without inventing account data or leaving a blank screen. */
 export function NotFoundPage({ invalidAccount = false }: { invalidAccount?: boolean }) {
   return (

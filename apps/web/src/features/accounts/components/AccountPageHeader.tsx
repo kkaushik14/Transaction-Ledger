@@ -1,8 +1,8 @@
 /** Account identity and clipboard feedback; unknown names use the approved Account/UUID fallback. */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Icon } from '../../../components/ui/Icon';
-import { IconButton } from '../../../components/ui/IconButton';
+import { Icon, IconButton } from '../../../components/ui/index.js';
+
 import styles from './accounts.module.css';
 /** Uses only a genuinely known name; copy failure leaves the full selectable UUID visible. */
 export function AccountPageHeader({

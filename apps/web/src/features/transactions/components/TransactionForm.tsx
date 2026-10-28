@@ -1,13 +1,16 @@
 /** Credit/debit form validates decimal strings and preserves payload/reference for uncertain retries. */
 import { useRef, useState, type FormEvent } from 'react';
 import { createTransactionRequestSchema } from '@ledger/contracts';
-import { Button } from '../../../components/ui/Button';
-import { SelectField } from '../../../components/ui/SelectField';
-import { TextField } from '../../../components/ui/TextField';
-import { TextAreaField } from '../../../components/ui/TextAreaField';
-import { StatusMessage } from '../../../components/ui/StatusMessage';
-import { Icon } from '../../../components/ui/Icon';
-import { useTransactionIntent } from '../hooks/useTransactionIntent';
+import {
+  Button,
+  SelectField,
+  TextField,
+  TextAreaField,
+  StatusMessage,
+  Icon,
+} from '../../../components/ui/index.js';
+
+import { useTransactionIntent } from '../hooks/index.js';
 import styles from './transactions.module.css';
 /** Exposes no mutable ID/timestamp/balance controls; the backend remains authoritative. */
 export function TransactionForm({

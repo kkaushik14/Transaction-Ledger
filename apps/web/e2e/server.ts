@@ -1,7 +1,7 @@
 /** Browser-test-only API fixture: isolated PostgreSQL, no .env, no hosted ledger writes. */
 import { createServer } from 'node:http';
-import { createApp } from '../../api/src/app.js';
-import { createTestPostgres } from '../../api/tests/helpers/test-postgres.js';
+import { createApp } from '../../api/src/index.js';
+import { createTestPostgres } from '../../api/tests/helpers/index.js';
 const fixture = await createTestPostgres();
 let cleanup: Promise<void> | undefined;
 /** Teardown is explicit so the runner waits for disk cleanup before terminating the server group. */

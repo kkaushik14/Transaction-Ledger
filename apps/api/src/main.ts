@@ -1,12 +1,12 @@
 /**
- * Validates configuration and verifies PostgreSQL before starting the account and credit/debit API.
+ * Validates configuration and verifies PostgreSQL before starting the account, transaction/history and transfer API.
  * Owns the single process pool and drains HTTP/database resources on termination.
  */
 import type { Server } from 'node:http';
 import type { Pool } from 'pg';
-import { createApp } from './app.js';
-import { EnvironmentValidationError, parseEnvironment } from './config/env.js';
-import { createDatabasePool } from './db/pool.js';
+import { createApp } from './index.js';
+import { EnvironmentValidationError, parseEnvironment } from './config/index.js';
+import { createDatabasePool } from './db/index.js';
 
 let pool: Pool | undefined;
 let server: Server | undefined;

@@ -8,8 +8,8 @@ import { setTimeout as pause } from 'node:timers/promises';
 import request from 'supertest';
 import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from 'vitest';
 import { createTransactionResponseSchema } from '@ledger/contracts';
-import { createApp } from '../../src/app.js';
-import { createTestPostgres } from '../helpers/test-postgres.js';
+import { createApp } from '../../src/index.js';
+import { createTestPostgres } from '../helpers/index.js';
 
 let fixture: Awaited<ReturnType<typeof createTestPostgres>>;
 let pool: Pool;
@@ -20,7 +20,7 @@ beforeAll(async () => {
   app = createApp({ database: pool, webOrigin: 'http://localhost:5173' });
 }, 60000);
 beforeEach(async () => {
-  await pool.query('TRUNCATE ledger.transactions,ledger.accounts');
+  await pool.query('TRUNCATE ledger.transactions,ledger.transfers,ledger.accounts');
 });
 afterAll(async () => {
   await fixture?.stop();

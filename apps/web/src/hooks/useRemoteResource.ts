@@ -1,7 +1,7 @@
 /** Abortable remote state keyed by identity; outdated requests never overwrite the selected account/query. */
 import { useEffect, useReducer, useState } from 'react';
-import { ApiClientError } from '../api/client';
-/** Fetches on identity/refresh changes while retaining only same-identity data during refresh. */
+import { ApiClientError } from '../api/index.js';
+/** Fetches by identity/revision, retaining only same-identity data on refresh/failure with explicit error state. */
 export function useRemoteResource<T>(identity: string, load: (signal: AbortSignal) => Promise<T>) {
   const [revision, refresh] = useReducer((value: number) => value + 1, 0);
   const [state, setState] = useState<{
@@ -18,9 +18,14 @@ export function useRemoteResource<T>(identity: string, load: (signal: AbortSigna
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted)
-          setState({
+          setState((previous) => ({
             identity,
             revision,
+            // A read failure must not erase a committed receipt/workflow. Retain
+            // only this identity's last known data and let consumers label it stale.
+            ...(previous?.identity === identity && previous.data !== undefined
+              ? { data: previous.data }
+              : {}),
             error:
               error instanceof ApiClientError
                 ? error
@@ -28,7 +33,7 @@ export function useRemoteResource<T>(identity: string, load: (signal: AbortSigna
                     'Unable to load this data. Please try again.',
                     'NETWORK_ERROR',
                   ),
-          });
+          }));
       });
     return () => controller.abort();
   }, [identity, load, revision]);

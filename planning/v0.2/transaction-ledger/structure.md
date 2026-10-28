@@ -67,7 +67,7 @@ transaction-ledger/
 │   │   │   │   │   ├── transactions.controller.ts
 │   │   │   │   │   ├── transactions.service.ts
 │   │   │   │   │   └── transactions.repository.ts
-│   │   │   │   └── transfers/      # [BONUS ONLY, create later]
+│   │   │   │   └── transfers/      # Approved transfer feature
 │   │   │   │       ├── transfers.routes.ts
 │   │   │   │       ├── transfers.controller.ts
 │   │   │   │       ├── transfers.service.ts
@@ -174,15 +174,44 @@ transaction-ledger/
     ├── config.toml               # [IMPLEMENT] Supabase CLI local config
     ├── migrations/
     │   ├── <timestamp>_create_ledger.sql
-    │   └── <timestamp>_add_transfers.sql  # [BONUS ONLY]
+    │   └── 20261028050000_add_transfers.sql  # Applied and verified on configured Supabase
     └── seed.sql                  # [OPTIONAL] Non-production dev fixture data
 ```
 
-`[IMPLEMENT]` labels in the original tree describe ownership, not pending work; inspect existing files before creating anything. The approved frontend is implemented; `[BONUS ONLY]` remains excluded. Generated files follow their tool's native format and are exempt from artificial source-file header comments.
+`[IMPLEMENT]` labels in the original tree describe ownership, not pending work; inspect existing files before creating anything. The approved frontend is implemented; the transfer backend is separately authorized and implemented; the transfer UI is now separately authorized and implemented. Generated files follow their tool's native format and are exempt from artificial source-file header comments.
 
 Additional implemented frontend modules: `components/ui/Icon.tsx`, `components/layout/navigation.ts`, `features/accounts/components/AccountPageHeader.tsx` and `AccountWorkspace.tsx`, `hooks/useRemoteResource.ts`, and `features/transactions/hooks/useTransactionIntent.ts` plus `transaction-intent.ts`. Component CSS Modules live beside their owners. `tsconfig.test.json` and `vitest.config.ts` configure isolated component tests; `playwright.config.ts` and `e2e/` own browser QA and the disposable local API/database fixture. See `docs/frontend-components.md` for state contracts and verification evidence.
 
 ## 3. How modules fit together
+
+### Folder entry convention (approved and implemented)
+
+Every implemented source folder has a typed `index.ts` entry. Node-targeted builds emit `index.js`; source imports explicitly name `index.js` so compiled Node ESM works without directory resolution. Reusable test helpers have their own entry too. No new folders were needed: existing responsibilities already justify the current structure. The illustrative tree above omits repeated entry files for brevity.
+
+| Boundary               | Entry and responsibility                                                                                                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API root               | `apps/api/src/index.ts` exports `createApp` and its injected dependencies; `main.ts` owns startup/shutdown                                                                                                    |
+| API infrastructure     | `config/index.ts`, `db/index.ts`, `errors/index.ts`, `middleware/index.ts` expose configuration parsers, pool/transaction factories, safe errors and HTTP middleware                                          |
+| API features           | `modules/index.ts` composes account/transaction/transfer entries; each feature entry exposes justified routers, services and injection contracts, keeping HTTP controller adapters and SQL row types internal |
+| Contracts              | Existing `packages/contracts/src/index.ts` remains the browser-safe package entry                                                                                                                             |
+| Browser root/routes    | `apps/web/src/index.ts` exports `App`; `app/index.ts` and `pages/index.ts` expose route/page compositions; `main.tsx` owns mounting                                                                           |
+| Presentation           | `components/index.ts` composes `ui/index.ts`, `layout/index.ts` and `landing/index.ts`; consumers use the closest responsible group                                                                           |
+| Domain UI              | `features/index.ts` composes account/transaction facades; each feature owns `components/index.ts` and `hooks/index.ts`; other features/pages use its facade                                                   |
+| Browser infrastructure | `api/index.ts` exposes typed HTTP adapters, `hooks/index.ts` exposes generic read orchestration, and `styles/index.ts` installs global/layout CSS once at bootstrap                                           |
+| Test infrastructure    | `apps/api/tests/helpers/index.ts` exposes the disposable database factory without starting it on import                                                                                                       |
+
+Examples:
+
+```ts
+// A consumer outside the transaction feature uses its public facade.
+import { TransactionForm, useTransactions } from '../../transactions/index.js';
+// A component inside a feature uses the owned hooks folder entry.
+import { useAccount } from '../hooks/index.js';
+// Same-folder implementation siblings import directly, avoiding their own barrel.
+import { AccountBalanceCard } from './AccountBalanceCard';
+```
+
+Entries explicitly list values and types, and parent entries re-export child entries. They contain no service initialization or registration logic. The intentional styles initializer is imported only by browser bootstrap. Do not export executable startup/check scripts, tests, config runners, migrations, documentation or assets as application code. Empty placeholders such as `apps/api/src/types` remain unused until a real responsibility exists. No microservice extraction, new transports, deployment units, business rules or API/schema changes accompany this refactor. See `rules.md` §3.1 for the enforced import convention.
 
 ### Backend request path
 
@@ -390,3 +419,11 @@ If a module is modified rather than created, update its existing comments and te
 - [ ] README and API docs remain synchronized with actual commands and paths.
 
 **Cross-references:** `rules.md`, `assumption.md`, `design.md`, `schema.md`, `plan.md`.
+
+## Transfer backend ownership
+
+`apps/api/src/modules/transfers/index.ts` exposes its router, service factory and service type. The same folder owns strict routing, HTTP controller, atomic service and transaction-scoped repository; repository rows and SQL stay internal. The parent `modules/index.ts` composes the feature and `app.ts` mounts `/api/v1/transfers`. `packages/contracts/src/transfers.contract.ts` owns shared strict request/response schemas and DTOs, exported from the package entry. `apps/api/tests/integration/transfers.integration.test.ts` owns native PostgreSQL HTTP/rollback/lock/migration tests; contract cases live beside existing shared tests. Native helper fixtures now apply the complete migration chain. Frontend transfer ownership is described below; no microservice packages or new transport abstractions were added.
+
+## Transfer UI ownership
+
+`apps/web/src/features/transfers/index.ts` exposes TransferForm, TransferReview and TransferReceipt. The components folder owns these presentational/workflow components and transfers.module.css; the hooks folder owns useTransferIntent and source-scoped persistence. Each folder has an explicit index.ts. `api/transfers.api.ts`, re-exported through api/index.ts, validates both request/response schemas and correlation with the preserved command. AccountWorkspace composes completed components, refreshes source data and preserves receipts on read failure. Tests live in `tests/transfer-features.test.tsx` and `e2e/transfers.spec.ts`; integrated refresh tests extend existing page/read-hook suites. No backend folders, shared contracts, migrations or microservice boundaries were changed.

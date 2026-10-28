@@ -1,4 +1,16 @@
-/** Explicit browser-safe public exports for implemented account, credit/debit, history, and error contracts. */
+/** Explicit browser-safe public exports for account, credit/debit, history, transfer, and error contracts. */
+export {
+  createTransferRequestSchema,
+  transferSchema,
+  transferTransactionSchema,
+  createTransferResponseSchema,
+} from './transfers.contract.js';
+export type {
+  CreateTransferRequest,
+  Transfer,
+  TransferTransaction,
+  CreateTransferResponse,
+} from './transfers.contract.js';
 export {
   accountNameSchema,
   createAccountRequestSchema,

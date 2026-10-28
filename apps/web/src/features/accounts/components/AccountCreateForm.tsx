@@ -2,12 +2,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createAccountRequestSchema } from '@ledger/contracts';
-import { createAccount } from '../../../api/accounts.api';
-import { ApiClientError, errorMessage } from '../../../api/client';
-import { Button } from '../../../components/ui/Button';
-import { TextField } from '../../../components/ui/TextField';
-import { StatusMessage } from '../../../components/ui/StatusMessage';
-import { Icon } from '../../../components/ui/Icon';
+import { createAccount, ApiClientError, errorMessage } from '../../../api/index.js';
+
+import { Button, TextField, StatusMessage, Icon } from '../../../components/ui/index.js';
+
 import styles from './accounts.module.css';
 /** Creates an account without accepting a balance or pretending to provide authentication. */
 export function AccountCreateForm() {

@@ -13,8 +13,8 @@ import {
   accountBalanceResponseSchema,
   apiErrorResponseSchema,
 } from '@ledger/contracts';
-import { createApp } from '../../src/app.js';
-import type { AccountDatabase } from '../../src/modules/accounts/accounts.repository.js';
+import { createApp } from '../../src/index.js';
+import type { AccountDatabase } from '../../src/modules/accounts/index.js';
 
 let database: PGlite;
 let app: Express;

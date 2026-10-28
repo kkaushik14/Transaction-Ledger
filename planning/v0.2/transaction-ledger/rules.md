@@ -25,6 +25,7 @@ This file is the implementation rulebook for every contributor and coding agent.
 13. **Use one monochrome design system.** All frontend components must use semantic black/white/neutral tokens, shared typography and spacing; semantic errors must not depend on color alone.
 14. **Develop the UI component-first.** Finish primitives, navigation/layout, section and feature components before composing pages. Avoid page-local copies of shared controls.
 15. **Deliver responsive site navigation.** Use a desktop navbar and an accessible collapsible sidebar for tablet/mobile; include site header, footer, hero, functional CTA sections, and full landing page.
+16. **Keep transfers fully atomic.** Acquire both account locks in database UUID order; preserve persistent source/reference and per-account ledger uniqueness; commit the transfer, both balances and both matching legs once. Every failure rolls back the complete movement. The authorized transfer UI must preserve the exact command/reference through uncertain outcomes, distinguish conflicts from success and never repeat writes when read refresh fails. Microservice work requires an explicit future request.
 
 ## 2. Source-file comment policy — mandatory
 
@@ -99,6 +100,17 @@ Good comments are specific, concise, and factually correct. They should document
 - Use `async`/`await`, parameterized SQL, and a single error-handling pipeline. Do not swallow exceptions.
 - Avoid global mutable state except safe, process-level configuration and a single managed database pool.
 - Prefer named exports for services and utilities; React components may use consistent named exports as well.
+
+### 3.1 Folder entry points and dependency direction
+
+- The user explicitly selected `index.ts` source files. API/contracts builds emit `index.js`; use explicit `.js` import/export specifiers, which TypeScript and Vite resolve to the typed source during development.
+- Every implemented source folder and reusable test-helper folder owns one entry. Cross-folder code consumers import that entry, for example `../components/ui/index.js` or `../../transactions/index.js`, rather than an implementation filename. Workspace contracts use `@ledger/contracts`.
+- Keep entries declarative, with explicit named exports and `export type` for type-only symbols. A parent entry re-exports child entries; avoid wildcard exports and accidental exposure of internal SQL rows, controllers or persistence details.
+- Implementation siblings inside one folder import each other directly. Do not import their own entry or an ancestor aggregate; that can create circular dependencies. Across domain features, use the owning feature facade; within a feature, use its components/hooks entries as appropriate. Tests may use the owning subfolder entry to verify internal behavior.
+- `apps/api/src/index.ts` exposes the injected Express factory. It must not export `main.ts` or `db/check-connection.ts`: importing a module must not start listeners, acquire pools, read secrets or run diagnostic queries. Frontend `src/index.ts` exports `App`; `main.tsx` owns DOM mounting and explicitly installs `styles/index.ts` once.
+- Generic UI, site navigation, landing sections, domain components/hooks, HTTP transport and database infrastructure keep their existing responsibilities. Do not add wrappers, empty folders, service classes or packages merely to host another entry file.
+- Test suites and their setup files, runner configs, migrations, documentation, assets and empty placeholders are not reusable application modules; do not create barrels that execute them. CSS Modules remain beside their owning component and are imported directly as assets.
+- ESLint rejects cross-folder deep code imports and contract package subpaths. Verify the dependency graph stays acyclic, and run typecheck, tests and builds after changing public entries. Microservice extraction remains future work.
 
 ## 4. Naming and API conventions
 

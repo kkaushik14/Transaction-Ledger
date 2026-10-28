@@ -5,7 +5,7 @@ import {
   createTransactionRequestSchema,
   transactionHistoryQuerySchema,
 } from '@ledger/contracts';
-import { requireJson, validate, validateQuery } from '../../middleware/validate.js';
+import { requireJson, validate, validateQuery } from '../../middleware/index.js';
 import {
   createTransactionController,
   createTransactionHistoryController,

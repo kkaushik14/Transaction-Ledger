@@ -1,12 +1,12 @@
 # Development and Delivery Plan
 
-> Project: Transaction Ledger | Version: 0.2 | Status: Backend and approved v0.2 UI implemented; transfers deferred
+> Project: Transaction Ledger | Version: 0.2 | Status: Account/transfer API and UI implemented; microservices excluded
 >
 > **Assessment constraint:** the PDF describes a **3–4 hour backend assessment**. The user additionally requested a component-first, monochrome React frontend with a responsive desktop navbar, tablet/mobile collapsible sidebar, complete landing page, and a maintainable TypeScript monorepo. Complete mandatory backend behavior, integrity tests, and documentation **before** spending assessment-critical time on UI polish or optional features.
 
 ## Current review and implementation baseline
 
-The user approved the v0.2 UI plan and Account/UUID fallback and explicitly authorized frontend implementation. Follow Phases 7A–7E in order, verifying components before page assembly. Transfers remain excluded.
+The user approved the v0.2 UI plan and Account/UUID fallback and explicitly authorized frontend implementation. Follow Phases 7A–7E in order, verifying components before page assembly. The transfer backend is now separately authorized; the transfer UI is now authorized and implemented; microservice work remains excluded.
 
 Existing delivery is preserved: pnpm/TypeScript/ESLint/Prettier tooling, API environment validation, verified-TLS pool, transaction helper, account creation/balance reads, atomic credit/debit writes, and filtered/paginated history are implemented. The initial Supabase migration is applied. The backend baseline has 213 passing tests; frontend verification is recorded below. No backend or database reset was needed for v0.2.
 
@@ -15,6 +15,12 @@ Phases 7A–7E are implemented in the required order: contracts/tokens, independ
 Verification on 2026-10-28: 213 API/contracts tests and 37 frontend tests pass, plus 13 real-browser tests against an isolated PostgreSQL fixture. Formatting, zero-warning lint, TypeScript checks and production builds pass. Responsive and long-content QA covers all five required widths, along with keyboard navigation, automated accessibility and lost-response retry safety. Final retry cleanup also has a regression test preventing old responses from erasing newer pending intents. See `docs/frontend-components.md` and README for commands and practical limits. Retained v0.1 files and backend/contracts sources are unchanged from the pre-UI baseline.
 
 ## 1. Delivery targets
+
+### Completed follow-up — explicit folder module entries
+
+The user approved typed `index.ts` sources for the requested `index.js` entry convention. Implemented folders now expose explicit named/type exports; consumers use folder or feature entries with `.js` specifiers, while implementation siblings keep direct imports. Existing account, transaction, infrastructure and presentation responsibilities remain intact. CLI startup/diagnostics, internal SQL/controller details and test runners are excluded from public export graphs; styles install once at browser bootstrap. ESLint enforces cross-folder entry imports.
+
+Verification: all 250 existing regression tests and 13 browser tests pass after refactoring. Typecheck, formatting, zero-warning lint and production builds pass. The source graph has no runtime cycles or executable exports; emitted API/config/database entries import without launching infrastructure. Eight lint probes confirm deep imports are rejected while valid entries, sibling imports and assets are accepted. Existing implementation/test bodies are unchanged apart from imports. Contracts, migrations and retained v0.1 planning remain unchanged. No microservice extraction, new business behavior or transfers were implemented.
 
 ### Target M1 — Repository ready
 
@@ -32,9 +38,9 @@ A polished black/white React/Vite landing page and account workspace are compose
 
 Source code, README with local startup instructions, API documentation, and documented assumptions are complete. Typecheck, format, lint, unit/integration tests, and manual walkthrough pass.
 
-### Target M5 — Optional enhancement
+### Target M5 — Approved transfer backend
 
-Only if time remains: atomic account-to-account transfer, with its own migration, API, rollback and concurrency tests, and optional UI.
+Atomic account-to-account transfer with a new migration, strict shared contracts, API and rollback/concurrency tests is implemented under the user’s explicit authorization. The transfer UI was subsequently authorized and implemented. The user separately authorized hosted migration application; it is now applied and verified.
 
 ## 2. Priority rules and stage gates
 
@@ -238,18 +244,20 @@ P0/P1 are both assessment requirements; the priority tiers are planning labels, 
 
 **Exit:** Reviewable, maintainable, locally runnable full-stack deliverable.
 
-### Phase 9 — Bonus atomic transfer (conditional)
+### Phase 9 — Authorized atomic transfer backend
 
-**Dependencies:** Phase 8 and explicit decision to pursue bonus.
+**Authorization:** The user explicitly requested the planned transfer backend and integrity tests. At this backend stage transfer UI was deferred; its authorized follow-up is recorded below. Microservice work remains excluded.
 
-- [ ] Create a new migration for `ledger.transfers` and linked `transactions.transfer_id` from `schema.md`.
-- [ ] Implement a strict `POST /api/v1/transfers` contract and dedicated module with comments.
-- [ ] Lock both accounts in deterministic UUID order; reject missing accounts, same account, insufficient funds, and duplicates.
-- [ ] Atomically insert transfer, debit and credit ledger entries, and update both balances.
-- [ ] Verify rollback of **all** transfer changes on any forced error; test concurrent opposing transfers.
-- [ ] Update API docs, assumptions, README, UI only if desired, and run full regression suite.
+- [x] Create a new migration for `ledger.transfers` and linked `transactions.transfer_id` from `schema.md`.
+- [x] Implement a strict `POST /api/v1/transfers` contract and dedicated module with comments.
+- [x] Lock both accounts in deterministic UUID order; reject missing accounts, same account, insufficient funds, and duplicates.
+- [x] Atomically insert transfer, debit and credit ledger entries, and update both balances.
+- [x] Verify rollback of **all** transfer changes on any forced error; test concurrent opposing transfers.
+- [x] Update API docs, assumptions and README, preserve the existing frontend, and run full regression checks.
 
 **Exit:** No partial transfer state is possible; every transfer has two correlated immutable entries.
+
+Verification: 42 new transfer contract tests and 53 native PostgreSQL transfer integration tests pass. The full suite passes 345 tests (128 contracts, 180 API, 37 frontend). The new migration upgrades populated initial tables without data changes; it is now applied to the configured Supabase project and verified under the user’s explicit deployment authorization. The initial migration and frontend code are unchanged.
 
 ## 4. Requirement-to-delivery traceability
 
@@ -265,7 +273,7 @@ P0/P1 are both assessment requirements; the priority tiers are planning labels, 
 | R-08 | Balance consistency                         | Phases 4 + 6 / reconciliation       | Reconciliation integration query       |
 | R-09 | Atomicity                                   | Phases 4 + 6 / transaction helper   | Forced rollback test                   |
 | R-10 | Validation + HTTP errors                    | Phases 3–5 / contracts + middleware | Invalid request matrix                 |
-| R-11 | Money transfer **bonus**                    | Phase 9, conditional                | Transfer rollback tests                |
+| R-11 | Money transfer **bonus**                    | Phase 9, authorized                 | Transfer rollback/concurrency tests    |
 | R-12 | Runnable code + source/docs/assumptions     | Phases 1, 6, 8                      | Clean-clone verification               |
 
 ## 5. Required test case catalog
@@ -377,3 +385,15 @@ A feature-complete submission must pass **all** of the following:
 ## 10. Review process for these six files
 
 Review in this order to minimize change propagation: **`assumption.md` → `rules.md` → `design.md` → `schema.md` → `structure.md` → `plan.md`**. When an item changes, update every dependent document before coding. Do not claim that a planned module, migration, script, or test is already implemented merely because it is described here.
+
+## Completed transfer schema deployment
+
+On October 28, 2026, the user authorized applying the transfer migration to the configured Supabase database. Preflight verified the expected session-pooler project and initial history over certificate-verified TLS. The CLI dry run selected only `20261028050000_add_transfers.sql`; the push applied it with vault/seed/role updates excluded. Thirty-one read-only schema checks passed, and SQL plus CLI history now match both local versions (`20261028000000`, `20261028050000`). Existing account and ledger fingerprints are unchanged, including null transfer links on pre-existing standalone rows. No financial test writes occurred. Both migration files, application code and retained v0.1 planning remain unchanged. This deployment did not add UI. The subsequent authorized transfer UI follow-up is recorded below; microservices remain excluded. See `docs/database-setup.md` for verification evidence and recovery.
+
+## Completed component-first transfer UI follow-up
+
+The user clarified the request to implement only the transfer UI using the existing API, without gateway/tokenization/authentication or microservice work. Component contracts were recorded before code, then review/receipt and hook/form passed 24 isolated cases before workspace integration. The delivered form validates source/destination/amount/description, requires review and confirmation, preserves exact retry commands, distinguishes unconfirmed/conflict/known failure/success, and shows a committed receipt. Source balance/history refresh independently from writes; recipient navigation fetches fresh data. Read errors retain confirmed receipts and visibly stale balances.
+
+Verification: 372 regression tests (128 contracts, 180 API, 64 frontend), 17 browser tests, formatting, lint, typechecks and builds. The transfer tests cover actual timeout, storage failure, stale completions and account isolation. Four new browser workflows cover all required widths, keyboard review, accessibility, source/filter/page and recipient refresh, committed response loss, known rejection and failed read retries. Tests use only disposable local databases. Backend source, shared contracts, applied migrations and retained v0.1 planning remain unchanged.
+
+The UI regression pass also corrected an existing disposable-test shutdown race: wait for client end events after pool.end() before stopping local PostgreSQL. This is confined to test infrastructure; production database/transaction behavior is unchanged.
