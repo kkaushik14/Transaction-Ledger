@@ -242,3 +242,6 @@ Official implementation references:
 - Supabase database connectivity: https://supabase.com/docs/guides/database/connecting-to-postgres
 - Prettier configuration: https://prettier.io/docs/configuration
 - Prettier installation and checks: https://prettier.io/docs/install
+
+
+Account navigation clarification: use “Account ID” for user-facing UUID labels. Keep duplicate display names allowed. “Log out” clears tab workspace selection only; never describe it as account deletion or access revocation, and never erase unresolved financial retry commands. Account selection must not invent an authentication boundary or cache authoritative balances.

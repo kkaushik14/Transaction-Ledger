@@ -55,7 +55,7 @@ describe('account feature components', () => {
   it('validates UUID lookup and navigates without fabricating a name', async () => {
     render(<FormRoute lookup />);
     await userEvent.click(screen.getByRole('button', { name: 'Open account' }));
-    expect(screen.getByText('Enter a valid account UUID.')).toBeInTheDocument();
+    expect(screen.getByText('Enter a valid Account ID.')).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText('Account ID'), accountId);
     await userEvent.click(screen.getByRole('button', { name: 'Open account' }));
     await waitFor(() =>

@@ -104,7 +104,7 @@ test('hero CTAs focus the real form fields and skip link remains keyboard reacha
   await hero.getByRole('link', { name: 'Open an account' }).click();
   await expect(page.getByLabel('Account ID', { exact: true })).toBeFocused();
   await page.getByRole('button', { name: 'Open account', exact: true }).click();
-  await expect(page.getByText('Enter a valid account UUID.')).toBeVisible();
+  await expect(page.getByText('Enter a valid Account ID.')).toBeVisible();
 });
 
 test('creates an account, credits/debits, filters history, rejects overspending, and copies UUID', async ({
@@ -168,6 +168,8 @@ test('maximum balances and long account/history content fit at every required wi
   await page.getByLabel('Account name').fill(name);
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
+  await page.getByRole('link', { name: 'Transaction Ledger home' }).click();
+  await expect(page.getByText('Your account is ready', { exact: true })).toBeVisible();
   for (const width of [320, 375, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await noOverflow(page);
@@ -307,4 +309,105 @@ test('landing, account, and modal pass automated accessibility checks', async ({
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
     .analyze();
   expect(result.violations).toEqual([]);
+});
+
+test('account creation selection survives navigation/reload; logout and ID lookup retain the ledger and duplicate names stay allowed', async ({
+  page,
+  request,
+}, info) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/#get-started');
+  await page.getByLabel('Account name').fill('Same name is allowed');
+  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await expect(page.getByTestId('account-balance')).toHaveText('0.00');
+  const first = new URL(page.url()).pathname.split('/').pop()!;
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Log out' })).toBeVisible();
+  await expect(
+    page.getByRole('banner').getByRole('link', { name: 'Create an account' }),
+  ).toHaveCount(0);
+  await page.getByLabel('Amount', { exact: true }).fill('12.50');
+  await page.getByRole('button', { name: 'Add credit', exact: true }).click();
+  await expect(page.getByTestId('account-balance')).toHaveText('12.50');
+  await page.getByRole('link', { name: 'Transaction Ledger home' }).click();
+  await expect(page.getByLabel('Account name')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText('Your account is ready', { exact: true })).toBeVisible();
+  for (const width of [320, 375, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await noOverflow(page);
+    if (width < 1024) {
+      await page.getByRole('button', { name: 'Open navigation' }).click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog.getByRole('button', { name: 'Log out' })).toBeVisible();
+      await expect(dialog.getByRole('link', { name: 'Create an account' })).toHaveCount(0);
+      await expect(dialog.getByRole('link', { name: 'My account' })).toHaveAttribute(
+        'href',
+        `/accounts/${first}`,
+      );
+      await page.keyboard.press('Escape');
+    } else
+      await expect(page.getByRole('banner').getByRole('button', { name: 'Log out' })).toBeVisible();
+    await page.locator('#get-started').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: info.outputPath(`selected-account-${width}.png`) });
+  }
+  expect(
+    (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
+      .violations,
+  ).toEqual([]);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Log out' }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(page.getByText('Logged out', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Account name')).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('Account name')).toBeVisible();
+  await page.getByLabel('Account ID', { exact: true }).fill(first.toUpperCase());
+  await page.getByRole('button', { name: 'Open account', exact: true }).click();
+  await expect(page.getByTestId('account-balance')).toHaveText('12.50');
+  await expect(page.getByText('1 transaction · Page 1 of 1')).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole('banner').getByRole('button', { name: 'Log out' }).click();
+  await page.getByLabel('Account name').fill('Same name is allowed');
+  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await expect(page.getByTestId('account-balance')).toHaveText('0.00');
+  const second = new URL(page.url()).pathname.split('/').pop()!;
+  expect(second).not.toBe(first);
+  expect((await (await request.get(`${api}/accounts/${first}/balance`)).json()).data.balance).toBe(
+    '12.50',
+  );
+});
+
+test('a concurrent balance change is refreshed after rejected debit, and a definitive missing-account read removes stale write controls', async ({
+  page,
+  request,
+}) => {
+  const id = await createAccount(request);
+  await page.goto(`/accounts/${id}`);
+  await expect(page.getByTestId('account-balance')).toHaveText('0.00');
+  expect(
+    (
+      await request.post(`${api}/accounts/${id}/transactions`, {
+        data: { type: 'credit', amount: '5.00', reference_id: 'external-credit' },
+      })
+    ).status(),
+  ).toBe(201);
+  await page.getByLabel('Transaction type').selectOption('debit');
+  await page.getByLabel('Amount', { exact: true }).fill('6');
+  await page.getByRole('button', { name: 'Add debit', exact: true }).click();
+  await expect(page.getByTestId('account-balance')).toHaveText('5.00');
+  await expect(page.getByText('1 transaction · Page 1 of 1')).toBeVisible();
+  await page.route(`**/accounts/${id}/balance`, (route) =>
+    route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found', details: {} },
+      }),
+    }),
+  );
+  await page.getByRole('button', { name: 'Add debit', exact: true }).click();
+  await expect(page.getByTestId('account-balance')).toHaveCount(0);
+  await expect(page.getByRole('form', { name: 'New transaction' })).toHaveCount(0);
+  await expect(page.getByRole('form', { name: 'Transfer between accounts' })).toHaveCount(0);
 });

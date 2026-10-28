@@ -38,17 +38,28 @@ export function useTransactionIntent(accountId: string, onChanged: () => void) {
     lock.current = true;
     // Save BEFORE sending: navigation or a lost response must not turn a retry
     // into a second movement with a freshly generated reference.
-    savePendingIntent(accountId, payload);
+    if (!savePendingIntent(accountId, payload)) {
+      lock.current = false;
+      setState((current) => ({
+        ...current,
+        message: 'Retry details could not be saved. Enable session storage before continuing.',
+      }));
+      return;
+    }
     setState({ phase: 'submitting', payload, message: undefined, result: undefined });
+    let refresh = false;
     try {
       const response = await createTransaction(accountId, payload);
       clearPendingIntent(accountId, payload.reference_id);
       if (mounted.current) {
         setState({ phase: 'done', payload, message: undefined, result: response.data });
-        onChanged();
+        refresh = true;
       }
     } catch (error) {
-      const uncertain = error instanceof ApiClientError && error.uncertain;
+      const uncertain =
+        !(error instanceof ApiClientError) ||
+        error.uncertain ||
+        (state.phase === 'uncertain' && error.code === 'CONFIGURATION_ERROR');
       const duplicate = error instanceof ApiClientError && error.code === 'DUPLICATE_TRANSACTION';
       if (!uncertain) clearPendingIntent(accountId, payload.reference_id);
       if (mounted.current) {
@@ -60,11 +71,13 @@ export function useTransactionIntent(accountId: string, onChanged: () => void) {
             : errorMessage(error),
           result: undefined,
         });
-        if (duplicate) onChanged();
+        refresh = duplicate || (error instanceof ApiClientError && error.status === 422);
       }
     } finally {
       lock.current = false;
     }
+    // Refetch errors must remain read failures, never reclassify a committed write.
+    if (refresh && mounted.current) onChanged();
   }
   function reset() {
     if (lock.current) return;

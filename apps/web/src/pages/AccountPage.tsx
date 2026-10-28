@@ -10,13 +10,15 @@ export function AccountPage() {
   const location = useLocation();
   const parsed = accountIdParamsSchema.safeParse({ accountId: params.accountId });
   if (!parsed.success) return <NotFoundPage invalidAccount />;
+  const accountId = parsed.data.accountId.toLowerCase();
   const metadata: unknown = location.state;
   let name: string | undefined;
   if (
     typeof metadata === 'object' &&
     metadata !== null &&
     'accountId' in metadata &&
-    metadata.accountId === parsed.data.accountId &&
+    typeof metadata.accountId === 'string' &&
+    metadata.accountId.toLowerCase() === accountId &&
     'accountName' in metadata
   ) {
     const known = accountNameSchema.safeParse(metadata.accountName);
@@ -24,7 +26,7 @@ export function AccountPage() {
   }
   return (
     <Container className="account-page">
-      <AccountWorkspace key={parsed.data.accountId} accountId={parsed.data.accountId} name={name} />
+      <AccountWorkspace key={accountId} accountId={accountId} name={name} />
     </Container>
   );
 }

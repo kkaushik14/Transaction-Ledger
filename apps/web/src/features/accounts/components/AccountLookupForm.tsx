@@ -15,7 +15,7 @@ export function AccountLookupForm() {
     event.preventDefault();
     const parsed = accountIdParamsSchema.safeParse({ accountId: id.trim() });
     if (!parsed.success) {
-      setError('Enter a valid account UUID.');
+      setError('Enter a valid Account ID.');
       field.current?.focus();
       return;
     }
@@ -34,7 +34,7 @@ export function AccountLookupForm() {
         name="account_id"
         autoComplete="off"
         spellCheck={false}
-        placeholder="Paste your account UUID"
+        placeholder="Paste your Account ID"
         required
         value={id}
         onChange={(event) => {

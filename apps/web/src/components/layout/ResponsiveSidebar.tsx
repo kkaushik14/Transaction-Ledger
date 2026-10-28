@@ -2,6 +2,7 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { Link } from 'react-router-dom';
 import { IconButton, ButtonLink } from '../ui/index.js';
+import { AccountAccessAction, useActiveAccount } from '../../features/accounts/index.js';
 
 import { desktopMediaQuery, navigationLinks } from './navigation';
 /** Drawer inputs remain presentational: layout never fetches account data. */
@@ -12,6 +13,7 @@ export interface ResponsiveSidebarProps {
 }
 /** Uses a native inert background and an explicit Tab loop to keep keyboard focus in the drawer. */
 export function ResponsiveSidebar({ open, onClose, triggerRef }: ResponsiveSidebarProps) {
+  const active = useActiveAccount();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -87,9 +89,12 @@ export function ResponsiveSidebar({ open, onClose, triggerRef }: ResponsiveSideb
             </Link>
           ))}
         </nav>
-        <ButtonLink to="/#get-started" state={{ entry: 'create' }} onClick={onClose}>
-          Create an account
-        </ButtonLink>
+        {active?.account && (
+          <ButtonLink to={`/accounts/${active.account.id}`} onClick={onClose}>
+            My account
+          </ButtonLink>
+        )}
+        <AccountAccessAction onNavigate={onClose} />
         <p className="sidebar-note">
           A simple ledger demo.
           <br />

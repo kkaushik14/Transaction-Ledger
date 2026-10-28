@@ -47,10 +47,15 @@ describe('read orchestration', () => {
     expect(view.result.current.data?.data.account_id).toBe(other);
   });
   it('resets the page when the type filter changes and serializes only real API parameters', async () => {
-    const fetcher = vi.fn<typeof fetch>(async () =>
+    const fetcher = vi.fn<typeof fetch>(async (url) =>
       jsonResponse({
         data: [],
-        pagination: { page: 1, limit: 20, total_records: 0, total_pages: 0 },
+        pagination: {
+          page: Number(new URL(String(url)).searchParams.get('page')),
+          limit: 20,
+          total_records: 0,
+          total_pages: 0,
+        },
       }),
     );
     vi.stubGlobal('fetch', fetcher);

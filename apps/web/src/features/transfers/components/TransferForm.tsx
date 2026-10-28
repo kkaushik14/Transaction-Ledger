@@ -44,7 +44,13 @@ export function TransferForm({
     });
     if (!parsed.success) {
       const next: Record<string, string> = {};
-      for (const issue of parsed.error.issues) next[String(issue.path[0])] = issue.message;
+      for (const issue of parsed.error.issues) {
+        const field = String(issue.path[0]);
+        next[field] =
+          field === 'destination_account_id' && issue.code === 'invalid_format'
+            ? 'Enter a valid destination Account ID.'
+            : issue.message;
+      }
       setErrors(next);
       (next.destination_account_id
         ? destinationRef
@@ -92,7 +98,7 @@ export function TransferForm({
             value={destination}
             required
             autoComplete="off"
-            placeholder="Paste the destination UUID"
+            placeholder="Paste the destination Account ID"
             error={errors.destination_account_id}
             onChange={(event) => {
               setDestination(event.target.value);

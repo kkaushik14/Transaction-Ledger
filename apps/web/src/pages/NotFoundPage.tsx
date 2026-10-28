@@ -10,7 +10,7 @@ export function NotFoundPage({ invalidAccount = false }: { invalidAccount?: bool
         <h1>{invalidAccount ? 'This account ID is not valid.' : 'We couldn’t find that page.'}</h1>
         <p>
           {invalidAccount
-            ? 'An account ID should be a complete UUID. Open an account using its ID, or create a new one.'
+            ? 'Enter the complete Account ID you saved when creating your account, or create a new account.'
             : 'The page may have moved, or the address may be incomplete. Your next entry is still waiting.'}
         </p>
         <div className="inline-actions">

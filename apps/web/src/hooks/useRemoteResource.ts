@@ -23,7 +23,9 @@ export function useRemoteResource<T>(identity: string, load: (signal: AbortSigna
             revision,
             // A read failure must not erase a committed receipt/workflow. Retain
             // only this identity's last known data and let consumers label it stale.
-            ...(previous?.identity === identity && previous.data !== undefined
+            ...(previous?.identity === identity &&
+            previous.data !== undefined &&
+            !(error instanceof ApiClientError && error.code === 'ACCOUNT_NOT_FOUND')
               ? { data: previous.data }
               : {}),
             error:

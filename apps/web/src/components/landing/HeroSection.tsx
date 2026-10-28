@@ -1,9 +1,11 @@
 /** Landing value proposition and working entry CTAs; preview figures are explicitly illustrative. */
 import { Container, Card, ButtonLink, Icon } from '../ui/index.js';
 
+import { useActiveAccount } from '../../features/accounts/index.js';
 import styles from './landing.module.css';
 /** Presents actual ledger capabilities without inventing live accounts, metrics, or payment integrations. */
 export function HeroSection() {
+  const active = useActiveAccount()?.account;
   return (
     <section className={styles.hero} aria-labelledby="hero-title">
       <Container>
@@ -22,8 +24,11 @@ export function HeroSection() {
               always know where you stand.
             </p>
             <div className="inline-actions hero-actions">
-              <ButtonLink to="/#get-started" state={{ entry: 'create' }}>
-                Create an account
+              <ButtonLink
+                to={active ? `/accounts/${active.id}` : '/#get-started'}
+                state={active ? undefined : { entry: 'create' }}
+              >
+                {active ? 'My account' : 'Create an account'}
                 <Icon name="arrow" />
               </ButtonLink>
               <ButtonLink to="/#get-started" state={{ entry: 'lookup' }} variant="secondary">

@@ -26,6 +26,7 @@ export function TransactionForm({
   const [description, setDescription] = useState(intent.payload?.description ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const amountRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (intent.phase !== 'editing') return;
@@ -39,7 +40,7 @@ export function TransactionForm({
       const next: Record<string, string> = {};
       for (const issue of parsed.error.issues) next[String(issue.path[0])] = issue.message;
       setErrors(next);
-      amountRef.current?.focus();
+      (next.amount ? amountRef : descriptionRef).current?.focus();
       return;
     }
     setErrors({});
@@ -87,6 +88,7 @@ export function TransactionForm({
           hint="Positive amount · Up to 2 decimal places"
         />
         <TextAreaField
+          ref={descriptionRef}
           label="Description (optional)"
           name="description"
           placeholder="What is this transaction for?"

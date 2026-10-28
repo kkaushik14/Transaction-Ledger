@@ -63,7 +63,10 @@ export function useTransferIntent(source: string, onChanged: () => void) {
         refresh = true;
       }
     } catch (error) {
-      const uncertain = !(error instanceof ApiClientError) || error.uncertain;
+      const uncertain =
+        !(error instanceof ApiClientError) ||
+        error.uncertain ||
+        (state.phase === 'uncertain' && error.code === 'CONFIGURATION_ERROR');
       const conflict =
         error instanceof ApiClientError &&
         ['DUPLICATE_TRANSFER', 'DUPLICATE_TRANSACTION'].includes(error.code);

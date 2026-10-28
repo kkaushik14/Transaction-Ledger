@@ -397,3 +397,14 @@ The user clarified the request to implement only the transfer UI using the exist
 Verification: 372 regression tests (128 contracts, 180 API, 64 frontend), 17 browser tests, formatting, lint, typechecks and builds. The transfer tests cover actual timeout, storage failure, stale completions and account isolation. Four new browser workflows cover all required widths, keyboard review, accessibility, source/filter/page and recipient refresh, committed response loss, known rejection and failed read retries. Tests use only disposable local databases. Backend source, shared contracts, applied migrations and retained v0.1 planning remain unchanged.
 
 The UI regression pass also corrected an existing disposable-test shutdown race: wait for client end events after pool.end() before stopping local PostgreSQL. This is confined to test infrastructure; production database/transaction behavior is unchanged.
+
+
+## End-to-end review follow-up (2026-10-28)
+
+- [x] Confirm duplicate names remain allowed under D-07; preserve existing API/schema behavior.
+- [x] Add tab-scoped selection, shared Log out action, landing continuation and Account ID wording. Reopening by ID retains all server data and unresolved retries.
+- [x] Harden standalone retry persistence, uncertain retry configuration failures, receipt/read correlation, invalid-field focus and rejected-write refreshes.
+- [x] Remove stale balance/write controls on authoritative account-not-found, while retaining confirmed balances through temporary read failures.
+- [x] Add regression coverage for navigation/reload/logout/reopen, case variants, pending commands and response mismatches. Browser review covers all five widths, accessibility and concurrent balance rejection.
+
+Verification totals and evidence are recorded in the root guide and `docs/frontend-components.md`. No microservices, authentication, API contract changes or database migrations are part of this review.

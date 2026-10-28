@@ -1,6 +1,6 @@
 /** Session persistence protects uncertain write retries across navigation or refresh; balances are never cached. */
 import { createTransactionRequestSchema, type CreateTransactionRequest } from '@ledger/contracts';
-const key = (accountId: string) => `transaction-ledger:intent:${accountId}`;
+const key = (accountId: string) => `transaction-ledger:intent:${accountId.toLowerCase()}`;
 /** Reads only a valid preserved request; malformed/stale browser data is ignored. */
 export function readPendingIntent(accountId: string): CreateTransactionRequest | undefined {
   try {
@@ -12,16 +12,17 @@ export function readPendingIntent(accountId: string): CreateTransactionRequest |
     return;
   }
 }
-/** Stores/removes an intent without making browser storage availability a prerequisite for the ledger. */
+/** Confirms persistence before writes so storage failure cannot silently remove reload retry protection. */
 export function savePendingIntent(
   accountId: string,
   input: CreateTransactionRequest | undefined,
-): void {
+): boolean {
   try {
     if (input) sessionStorage.setItem(key(accountId), JSON.stringify(input));
     else sessionStorage.removeItem(key(accountId));
+    return input ? JSON.stringify(readPendingIntent(accountId)) === JSON.stringify(input) : true;
   } catch {
-    /* Private browsing/storage restrictions leave in-memory retry protection intact. */
+    return false;
   }
 }
 /** Late responses from an unmounted form may clear only their own reference, never a newer intent. */

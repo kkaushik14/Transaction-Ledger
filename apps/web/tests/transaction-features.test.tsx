@@ -6,6 +6,18 @@ import { TransactionForm, TransactionHistory } from '../src/features/transaction
 import { readPendingIntent } from '../src/features/transactions/hooks/index.js';
 
 import { accountId, transactionResponse, jsonResponse } from './fixtures';
+/** Correlates fake successful receipts with the actual command, including its generated reference. */
+function receipt(init?: RequestInit) {
+  return jsonResponse(
+    {
+      data: {
+        ...transactionResponse.data,
+        transaction: { ...transactionResponse.data.transaction, ...JSON.parse(String(init?.body)) },
+      },
+    },
+    201,
+  );
+}
 /** Fills a simple valid credit while leaving the generated reference under component control. */
 async function fill() {
   await userEvent.type(screen.getByLabelText('Amount'), '1.5');
@@ -21,7 +33,7 @@ describe('transaction intent', () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
   it('normalizes amount, sends one request, and refreshes authoritative data', async () => {
-    const fetcher = vi.fn<typeof fetch>(async () => jsonResponse(transactionResponse, 201));
+    const fetcher = vi.fn<typeof fetch>(async (_url, init) => receipt(init));
     const changed = vi.fn();
     vi.stubGlobal('fetch', fetcher);
     render(<TransactionForm accountId={accountId} onChanged={changed} />);
@@ -37,7 +49,7 @@ describe('transaction intent', () => {
   });
   it('blocks duplicate form submission while the request is pending', async () => {
     let resolve: ((response: Response) => void) | undefined;
-    const fetcher = vi.fn(
+    const fetcher = vi.fn<typeof fetch>(
       () =>
         new Promise<Response>((done) => {
           resolve = done;
@@ -51,7 +63,7 @@ describe('transaction intent', () => {
     fireEvent.submit(form);
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: 'Recording credit…' })).toBeDisabled();
-    resolve?.(jsonResponse(transactionResponse, 201));
+    resolve?.(receipt(fetcher.mock.calls[0]?.[1]));
     expect(await screen.findByText('Credit recorded')).toBeInTheDocument();
   });
   it.each([
@@ -69,7 +81,7 @@ describe('transaction intent', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(message);
     expect(screen.getByLabelText('Amount')).toHaveValue('1.5');
     expect(screen.getByLabelText('Amount')).toBeEnabled();
-    expect(changed).not.toHaveBeenCalled();
+    expect(changed).toHaveBeenCalledTimes(1);
   });
   it('preserves an uncertain payload/reference across remount and retries it unchanged', async () => {
     const fetcher = vi.fn<typeof fetch>(async () => {
@@ -82,7 +94,7 @@ describe('transaction intent', () => {
     expect(await screen.findByText('Result not confirmed')).toBeInTheDocument();
     const original = String(fetcher.mock.calls[0]?.[1]?.body);
     first.unmount();
-    fetcher.mockImplementation(async () => jsonResponse(transactionResponse, 201));
+    fetcher.mockImplementation(async (_url, init) => receipt(init));
     const changed = vi.fn();
     render(<TransactionForm accountId={accountId} onChanged={changed} />);
     expect(screen.getByLabelText('Amount')).toHaveValue('1.50');
@@ -118,7 +130,7 @@ describe('transaction intent', () => {
   });
   it('does not let an old form response erase a newer pending intent after navigation', async () => {
     const finish: ((response: Response) => void)[] = [];
-    const fetcher = vi.fn(
+    const fetcher = vi.fn<typeof fetch>(
       () =>
         new Promise<Response>((resolve) => {
           finish.push(resolve);
@@ -136,11 +148,11 @@ describe('transaction intent', () => {
     const latest = readPendingIntent(accountId);
     expect(latest?.amount).toBe('2.00');
     await act(async () => {
-      finish[0]?.(jsonResponse(transactionResponse, 201));
+      finish[0]?.(receipt(fetcher.mock.calls[0]?.[1]));
     });
     expect(readPendingIntent(accountId)).toEqual(latest);
     await act(async () => {
-      finish[1]?.(jsonResponse(transactionResponse, 201));
+      finish[1]?.(receipt(fetcher.mock.calls[1]?.[1]));
     });
     expect(readPendingIntent(accountId)).toBeUndefined();
   });

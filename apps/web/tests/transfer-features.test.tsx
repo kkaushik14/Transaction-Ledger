@@ -160,6 +160,8 @@ describe('transfer command workflow', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Review transfer' }));
     expect(screen.getByLabelText(label)).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByLabelText(label)).toHaveFocus();
+    if (value === 'not-a-uuid')
+      expect(screen.getByText('Enter a valid destination Account ID.')).toBeInTheDocument();
     expect(fetcher).not.toHaveBeenCalled();
   });
   it('normalizes the reviewed payload, allows edits before sending, and refreshes after one confirmed POST', async () => {

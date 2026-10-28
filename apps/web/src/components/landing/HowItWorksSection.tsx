@@ -5,7 +5,7 @@ import styles from './landing.module.css';
 const steps = [
   {
     title: 'Create your account',
-    copy: 'Give it a name and keep your account ID. Already have one? Open it with its UUID.',
+    copy: 'Give it a name and keep your account ID. Already have one? Open it with its Account ID.',
   },
   {
     title: 'Make your first entry',

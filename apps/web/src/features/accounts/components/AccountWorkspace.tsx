@@ -1,4 +1,5 @@
 /** Composes verified domain components and hooks; server reads remain authoritative after every write. */
+import { useEffect } from 'react';
 import {
   Card,
   LoadingState,
@@ -7,7 +8,7 @@ import {
   ButtonLink,
 } from '../../../components/ui/index.js';
 
-import { useAccount } from '../hooks/index.js';
+import { useAccount, useActiveAccount } from '../hooks/index.js';
 import { useTransactions, TransactionForm, TransactionHistory } from '../../transactions/index.js';
 import { TransferForm } from '../../transfers/index.js';
 import { AccountPageHeader } from './AccountPageHeader';
@@ -23,13 +24,23 @@ export function AccountWorkspace({
 }) {
   const account = useAccount(accountId);
   const history = useTransactions(accountId);
+  const active = useActiveAccount();
+  const select = active?.select;
+  const forget = active?.forget;
+  useEffect(() => {
+    if (account.data) select?.({ id: accountId, name });
+    else if (account.error?.code === 'ACCOUNT_NOT_FOUND') forget?.(accountId);
+  }, [account.data, account.error, accountId, name, select, forget]);
   const refresh = () => {
     account.refresh();
     history.refreshAfterMutation();
   };
   return (
     <>
-      <AccountPageHeader accountId={accountId} name={name} />
+      <AccountPageHeader
+        accountId={accountId}
+        name={name ?? (active?.account?.id === accountId ? active.account.name : undefined)}
+      />
       {account.error && !account.data ? (
         <div className="stack">
           <StatusMessage

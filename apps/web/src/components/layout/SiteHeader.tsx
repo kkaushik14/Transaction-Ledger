@@ -1,7 +1,8 @@
 /** Shared identity, desktop navigation, and accessible responsive menu trigger. */
 import { useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Container, ButtonLink, Icon, IconButton } from '../ui/index.js';
+import { Container, Icon, IconButton } from '../ui/index.js';
+import { AccountAccessAction } from '../../features/accounts/index.js';
 
 import { DesktopNav } from './DesktopNav';
 import { ResponsiveSidebar } from './ResponsiveSidebar';
@@ -21,10 +22,7 @@ export function SiteHeader() {
         </Link>
         <DesktopNav />
         <div className="header-actions">
-          <ButtonLink className="header-cta" to="/#get-started" state={{ entry: 'create' }}>
-            Create an account
-            <Icon name="arrow" />
-          </ButtonLink>
+          <AccountAccessAction className="header-cta" />
           <IconButton
             ref={trigger}
             className="nav-menu-button"

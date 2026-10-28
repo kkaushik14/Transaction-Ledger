@@ -120,7 +120,7 @@
 
 ### 5.2 Approved UI implementation decisions
 
-The user approved the v0.2 UI plan, component-first order, breakpoints and Account/UUID fallback before implementation. F-01–F-12 describe the delivered frontend.
+The user approved the v0.2 UI plan, component-first order, breakpoints and Account/UUID fallback before implementation. F-01–F-13 describe the delivered frontend.
 
 | ID   | Assumption                                                                                                                                             | Rationale / change impact                                                                                                                 |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -137,7 +137,16 @@ The user approved the v0.2 UI plan, component-first order, breakpoints and Accou
 | F-11 | For UUID lookup/direct navigation, show an honest account label and UUID if the name is unavailable; display the name when returned by creation        | Explicitly approved by the user and implemented: the existing balance endpoint returns ID/balance only; no new backend endpoint is needed |
 | F-12 | Reset history to page 1 when the type filter changes; ignore or cancel stale requests when account/filter/page changes                                 | Keeps the selected account, filter, rows, and pagination in sync                                                                          |
 
-### 5.3 Functional UX and scope boundaries
+### 5.3 Account selection clarification (user decision, 2026-10-28)
+
+- Retain D-07: duplicate account names are allowed. Names are display labels; account UUIDs are the unique identity.
+- F-13: After successful creation or a verified account read, remember the selected Account ID and optional known creation name in tab session storage. Show **Log out** in the header/drawer, and **My account** instead of creation CTAs on the landing page. Offer creation again after logging out; existing accounts remain openable by ID.
+- “Log out” clears only the selected browser workspace and returns home. It does not delete ledger data, revoke Account ID access, cancel a request already sent, or add authentication. Preserve unresolved financial commands/references so reopening the same account can retry safely. No authentication endpoint or schema change is introduced.
+- Use **Account ID** in user-facing text. Its underlying format remains a UUID; keep UUID terminology in technical specifications and validation rules. Unknown account names retain the approved “Account” fallback.
+- A definitive account-not-found read removes stale balance and mutation controls and clears that selected identity. Network/read failures retain the last confirmed balance with an explicit stale label.
+- Credit/debit and transfers must persist retry details before sending. A local configuration failure during a previously uncertain retry cannot discard the original reference. Successful receipts must match their requested account and command; history must match its account, filter and pagination.
+
+### 5.4 Functional UX and scope boundaries
 
 - The React app supports account creation, lookup by UUID, balance, credit/debit input, filtered latest-first transaction history, and pagination.
 - The browser generates a new `reference_id` for each new transaction intent and preserves it for retries of the **same** intent; the server enforces uniqueness.

@@ -5,5 +5,8 @@ export {
   AccountLookupForm,
   AccountPageHeader,
   AccountWorkspace,
+  ActiveAccountProvider,
+  AccountAccessAction,
+  ActiveAccountCard,
 } from './components/index.js';
-export { useAccount } from './hooks/index.js';
+export { useAccount, useActiveAccount } from './hooks/index.js';

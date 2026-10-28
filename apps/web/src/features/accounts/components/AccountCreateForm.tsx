@@ -7,8 +7,10 @@ import { createAccount, ApiClientError, errorMessage } from '../../../api/index.
 import { Button, TextField, StatusMessage, Icon } from '../../../components/ui/index.js';
 
 import styles from './accounts.module.css';
+import { useActiveAccount } from '../hooks/index.js';
 /** Creates an account without accepting a balance or pretending to provide authentication. */
 export function AccountCreateForm() {
+  const active = useActiveAccount();
   const [name, setName] = useState('');
   const [fieldError, setFieldError] = useState<string>();
   const [error, setError] = useState<string>();
@@ -40,6 +42,7 @@ export function AccountCreateForm() {
       const result = await createAccount(parsed.data);
       // A completed write must not pull the user back after they leave account entry.
       if (!mounted.current) return;
+      active?.select({ id: result.data.id, name: result.data.name });
       void navigate(`/accounts/${result.data.id}`, {
         state: { accountId: result.data.id, accountName: result.data.name },
       });
@@ -73,6 +76,7 @@ export function AccountCreateForm() {
         name="name"
         autoComplete="name"
         placeholder="e.g. Alex Morgan"
+        hint="Names can repeat. Save your Account ID to reopen the right account."
         required
         value={name}
         onChange={(event) => {
