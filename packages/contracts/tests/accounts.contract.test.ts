@@ -57,12 +57,22 @@ describe('account contracts', () => {
   it('accepts the standard error response and rejects unknown codes', () => {
     expect(
       apiErrorResponseSchema.safeParse({
-        error: { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found', details: {} },
+        error: {
+          code: 'ACCOUNT_NOT_FOUND',
+          message: 'Account not found',
+          support_ticket_id: '11111111-1111-4111-8111-111111111111',
+          action: 'fix_input',
+        },
       }).success,
     ).toBe(true);
     expect(
       apiErrorResponseSchema.safeParse({
-        error: { code: 'raw-db-code', message: 'oops', details: {} },
+        error: {
+          code: 'raw-db-code',
+          message: 'oops',
+          support_ticket_id: '11111111-1111-4111-8111-111111111111',
+          action: 'fix_input',
+        },
       }).success,
     ).toBe(false);
   });

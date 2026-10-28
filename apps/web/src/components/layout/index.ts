@@ -5,3 +5,4 @@ export { ResponsiveSidebar } from './ResponsiveSidebar.js';
 export type { ResponsiveSidebarProps } from './ResponsiveSidebar.js';
 export { SiteHeader } from './SiteHeader.js';
 export { SiteFooter } from './SiteFooter.js';
+export { ApplicationErrorBoundary, GlobalErrorHandler } from './ApplicationErrorBoundary.js';

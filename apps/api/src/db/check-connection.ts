@@ -2,7 +2,8 @@
  * Read-only infrastructure smoke check for the configured API pool and helper.
  * Does not create tables or write account/transaction data; never prints credentials.
  */
-import { EnvironmentValidationError, parseEnvironment } from '../config/index.js';
+import { parseEnvironment } from '../config/index.js';
+import { logInternalError } from '../errors/index.js';
 import { createDatabasePool } from './pool.js';
 import { withTransaction } from './transaction.js';
 
@@ -20,7 +21,7 @@ try {
         await client.query('SELECT 1');
         throw expected;
       });
-    } catch (error) {
+    } catch (error: unknown) {
       if (error !== expected) throw error;
     }
     await pool.query('SELECT 1');
@@ -28,11 +29,7 @@ try {
   } finally {
     await pool.end();
   }
-} catch (error) {
-  console.error(
-    error instanceof EnvironmentValidationError
-      ? error.message
-      : 'Database check failed. Check connection settings, CA certificate, and network access.',
-  );
+} catch (error: unknown) {
+  logInternalError(error, 'database.check');
   process.exitCode = 1;
 }

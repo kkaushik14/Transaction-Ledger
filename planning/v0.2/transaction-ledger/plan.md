@@ -408,3 +408,29 @@ The UI regression pass also corrected an existing disposable-test shutdown race:
 - [x] Add regression coverage for navigation/reload/logout/reopen, case variants, pending commands and response mismatches. Browser review covers all five widths, accessibility and concurrent balance rejection.
 
 Verification totals and evidence are recorded in the root guide and `docs/frontend-components.md`. No microservices, authentication, API contract changes or database migrations are part of this review.
+
+
+## Centralized error handling follow-up (2026-10-28)
+
+- [x] Replace details envelope with strict support ID/code/mapped message/action contract and shared exhaustive catalog.
+- [x] Add typed domain failures, canonical status/SQL/parser mapping and private causal/redacted diagnostics.
+- [x] Migrate every frontend error/validation view to ErrorNotice and safe recovery actions.
+- [x] Preserve identical financial retries, committed receipts and unknown account-creation safety; coalesce concurrent read failures.
+- [x] Handle unknown caught values, synchronous callback exceptions, promise rejections, render/global/bootstrap errors and API process/pool failures.
+- [x] Verify hostile messages, cause preservation, support correlation, metadata privacy, error UI accessibility and existing ledger rollback/concurrency workflows.
+
+The user explicitly authorized this failure-contract update. It adds no routes, migrations, authentication or microservices. Current verification totals are maintained in the root guide and docs/frontend-components.md.
+
+
+## Error-handling end-to-end review
+
+- [x] Trace displayed HTTP IDs through response body/header, browser metadata and serialized API log files.
+- [x] Trace local IDs restored after reload without auto-sending; preserve identical financial references and verify one movement after conflict.
+- [x] Preserve mounted route context, timestamps, validation paths and redacted causal chains.
+- [x] Keep error responses safe and IDs privately inspectable when logging/metadata inspection fails.
+- [x] Keep history visible for combined read failures, provide one Retry account action and remove redundant transfer confirmation after storage failure.
+- [x] Verify pending-action locking, correlation mismatches and browser console failure fallback.
+
+Operational evidence and log retention/source limits live in docs/error-handling.md. No microservices, public diagnostic endpoints or schema changes are added.
+
+- [x] Verify generated diagnostic logs remain readable for local support-ID lookup but receive HTTP 403 through Vite; preserve default secret-file deny rules and rerun the focused browser error workflows.

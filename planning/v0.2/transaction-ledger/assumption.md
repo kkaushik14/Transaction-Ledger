@@ -99,7 +99,7 @@
 | H-07 | No history filter                       | Return both types                                                                                                             |
 | H-08 | Duplicate account/reference combination | Return `409 Conflict` with `DUPLICATE_TRANSACTION`; never create another entry                                                |
 | H-09 | Insufficient balance                    | Return `422 Unprocessable Entity` with `INSUFFICIENT_BALANCE`                                                                 |
-| H-10 | Invalid input                           | Return `400 Bad Request` with validation details                                                                              |
+| H-10 | Invalid input                           | Return `400 Bad Request` with mapped instructions and support ID                                                                              |
 | H-11 | Account does not exist                  | Return `404 Not Found`                                                                                                        |
 | H-12 | Unexpected server error                 | Return `500` with generic safe message; detailed server-side log only                                                         |
 | H-13 | Unknown request body fields             | Reject in mutation routes rather than silently accepting `balance` or `created_at`                                            |
@@ -211,3 +211,12 @@ When an assumption is confirmed or changed:
 References: Assessment PDF pages 1–5; Supabase connectivity https://supabase.com/docs/guides/database/connecting-to-postgres; Supabase SQL migrations https://supabase.com/docs/guides/local-development/database-migrations.
 
 Transfer UI follow-up: fixed source UUID, destination UUID validation including self-transfer case variants, exact positive amount, optional description, review before confirmation and a receipt only for a correlated committed response. Preserve the exact command/reference before HTTP and across reload; block sending if session persistence fails. Both duplicate codes are conflicts, not successful replays. Keep conflict commands until explicit user acknowledgement before a new intent. Read refreshes are separate from writes; retain a confirmed receipt when reads fail and label retained balances as stale. Source history resets to page 1 while keeping its filter; recipient navigation fetches current data. No backend changes or new migrations are needed.
+
+
+## Centralized error handling decision (user request, 2026-10-28)
+
+The public failure contract now contains only support_ticket_id, code, mapped message and action. This supersedes the earlier details envelope; API and frontend must be updated together. Support IDs are diagnostic correlation IDs, not automatically opened external support tickets. Server logs preserve redacted originals/causes; browser failures retain private bounded causal records and expose metadata only in console output. No remote ticketing/telemetry service is assumed.
+
+Known errors resolve specific actionable messages; unknown errors resolve safe generic copy. Local validation uses the same error view, with invalid controls associated to one notice and a Review details focus action. Unconfirmed account creation cannot be blindly retried. Financial writes preserve exact retry payload/reference, known duplicates remain conflicts, and read-retry actions never send money. Concurrent balance/history read failures coalesce into one recovery notice, while committed receipts remain visible. Unexpected React/browser/bootstrap/process failures have centralized recovery/logging. This changes no account naming, money, transfer or database semantics and introduces no microservices.
+
+Error review clarification: support IDs identify the failure’s originating diagnostic source; local/browser-only failures are not uploaded to API logs. Every displayed ID, including restored intentions, is logged. Browser metadata links coalesced read failures; a single Retry account action refreshes balance and history without hiding the history panel. API and browser diagnostics are bounded/process-local when their output sink fails, not durable ticket storage. Read docs/error-handling.md for capture/lookup limits. No public contract, migration or financial rule changes are needed.

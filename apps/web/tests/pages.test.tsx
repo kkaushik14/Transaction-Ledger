@@ -106,7 +106,7 @@ describe('page composition', () => {
     await userEvent.type(transfer.getByLabelText('Transfer amount'), '1.50');
     await userEvent.click(transfer.getByRole('button', { name: 'Review transfer' }));
     await userEvent.click(transfer.getByRole('button', { name: 'Confirm transfer' }));
-    expect(await screen.findByText('Balance refresh failed')).toBeInTheDocument();
+    expect(await screen.findByText(/Balance refresh failed/)).toBeInTheDocument();
     expect(transfer.getByText('Transfer complete')).toBeInTheDocument();
     expect(screen.getByTestId('account-balance')).toHaveTextContent('10.00');
     expect(screen.getByText('Last confirmed balance')).toBeInTheDocument();
@@ -120,7 +120,14 @@ describe('page composition', () => {
       'fetch',
       vi.fn<typeof fetch>(async () =>
         jsonResponse(
-          { error: { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found', details: {} } },
+          {
+            error: {
+              code: 'ACCOUNT_NOT_FOUND',
+              message: 'Account not found',
+              support_ticket_id: '11111111-1111-4111-8111-111111111111',
+              action: 'fix_input',
+            },
+          },
           404,
         ),
       ),
@@ -128,26 +135,19 @@ describe('page composition', () => {
     page(`/accounts/${accountId}`);
     expect(await screen.findByRole('alert')).toHaveTextContent('Account not found');
     expect(screen.queryByTestId('account-balance')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Open another account' })).toHaveAttribute(
-      'href',
-      '/#get-started',
-    );
+    expect(screen.getByRole('button', { name: 'Go Back' })).toBeInTheDocument();
   });
   it('does not query APIs for invalid UUID routes and provides recovery', () => {
     const fetcher = vi.fn();
     vi.stubGlobal('fetch', fetcher);
     page('/accounts/invalid');
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'This account ID is not valid.',
-    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a valid Account ID');
     expect(fetcher).not.toHaveBeenCalled();
   });
   it('provides a real not-found route inside the shared shell', () => {
     page('/not-a-real-route');
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'We couldn’t find that page.',
-    );
-    expect(screen.getByRole('link', { name: 'Back to overview' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('alert')).toHaveTextContent('We couldn’t find that page.');
+    expect(screen.getByRole('button', { name: 'Go Back' })).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
 });

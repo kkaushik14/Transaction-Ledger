@@ -72,13 +72,27 @@ describe('transaction intent', () => {
   ])('handles %s without clearing form context', async (code, message) => {
     vi.stubGlobal(
       'fetch',
-      vi.fn<typeof fetch>(async () => jsonResponse({ error: { code, message, details: {} } }, 422)),
+      vi.fn<typeof fetch>(async () =>
+        jsonResponse(
+          {
+            error: {
+              code,
+              message,
+              support_ticket_id: '11111111-1111-4111-8111-111111111111',
+              action: 'fix_input',
+            },
+          },
+          422,
+        ),
+      ),
     );
     const changed = vi.fn();
     render(<TransactionForm accountId={accountId} onChanged={changed} />);
     await fill();
     await userEvent.click(screen.getByRole('button', { name: 'Add credit' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      code === 'INSUFFICIENT_BALANCE' ? 'insufficient balance' : 'balance limit',
+    );
     expect(screen.getByLabelText('Amount')).toHaveValue('1.5');
     expect(screen.getByLabelText('Amount')).toBeEnabled();
     expect(changed).toHaveBeenCalledTimes(1);
@@ -91,7 +105,7 @@ describe('transaction intent', () => {
     const first = render(<TransactionForm accountId={accountId} onChanged={() => {}} />);
     await fill();
     await userEvent.click(screen.getByRole('button', { name: 'Add credit' }));
-    expect(await screen.findByText('Result not confirmed')).toBeInTheDocument();
+    expect(await screen.findByText(/Result not confirmed/)).toBeInTheDocument();
     const original = String(fetcher.mock.calls[0]?.[1]?.body);
     first.unmount();
     fetcher.mockImplementation(async (_url, init) => receipt(init));
@@ -110,7 +124,12 @@ describe('transaction intent', () => {
     const fetcher = vi.fn<typeof fetch>(async () =>
       jsonResponse(
         {
-          error: { code: 'DUPLICATE_TRANSACTION', message: 'Reference already used', details: {} },
+          error: {
+            code: 'DUPLICATE_TRANSACTION',
+            message: 'Reference already used',
+            support_ticket_id: '11111111-1111-4111-8111-111111111111',
+            action: 'fix_input',
+          },
         },
         409,
       ),
@@ -120,7 +139,7 @@ describe('transaction intent', () => {
     render(<TransactionForm accountId={accountId} onChanged={changed} />);
     await fill();
     await userEvent.click(screen.getByRole('button', { name: 'Add credit' }));
-    expect(await screen.findByText('Reference already used')).toBeInTheDocument();
+    expect(await screen.findByText(/Reference already used/)).toBeInTheDocument();
     expect(changed).toHaveBeenCalledTimes(1);
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(screen.getByLabelText('Amount')).toBeDisabled();

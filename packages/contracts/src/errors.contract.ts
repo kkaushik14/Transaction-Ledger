@@ -1,7 +1,6 @@
-/** Shared public error envelopes; SQL, credentials, and internal stacks never belong here. */
+/** Public failures contain exactly support correlation, a stable code, safe copy and a recovery action. */
 import { z } from 'zod';
-
-/** Error codes implemented by the account/credit/debit/transfer API and HTTP boundary. */
+/** Codes emitted by the HTTP boundary; client-only failures never invent HTTP statuses. */
 export const apiErrorCodeSchema = z.enum([
   'VALIDATION_ERROR',
   'ACCOUNT_NOT_FOUND',
@@ -14,15 +13,35 @@ export const apiErrorCodeSchema = z.enum([
   'PAYLOAD_TOO_LARGE',
   'INTERNAL_ERROR',
 ]);
-/** Standard error shape shared by browser consumers and the API. */
+/** Browser failures use the same public presentation contract, including local validation. */
+export const errorCodeSchema = z.enum([
+  ...apiErrorCodeSchema.options,
+  'NETWORK_ERROR',
+  'INVALID_RESPONSE',
+  'CONFIGURATION_ERROR',
+  'STORAGE_UNAVAILABLE',
+  'INVALID_ACCOUNT_ID',
+  'INVALID_ACCOUNT_NAME',
+  'INVALID_AMOUNT',
+  'INVALID_DESCRIPTION',
+  'SELF_TRANSFER',
+  'CLIPBOARD_UNAVAILABLE',
+  'ACCOUNT_CREATION_UNCONFIRMED',
+]);
+/** Actions are identifiers, never server-supplied scripts or navigation URLs. */
+export const errorActionSchema = z.enum(['retry', 'go_back', 'review', 'fix_input', 'reload']);
+const fields = {
+  support_ticket_id: z.uuid(),
+  code: errorCodeSchema,
+  message: z.string().min(1),
+  action: errorActionSchema,
+};
+export const publicFailureSchema = z.strictObject(fields);
 export const apiErrorResponseSchema = z.strictObject({
-  error: z.strictObject({
-    code: apiErrorCodeSchema,
-    message: z.string(),
-    details: z.record(z.string(), z.unknown()),
-  }),
+  error: z.strictObject({ ...fields, code: apiErrorCodeSchema }),
 });
-/** Implemented public error code. */
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
-/** Standard HTTP error response. */
+export type ErrorCode = z.infer<typeof errorCodeSchema>;
+export type ErrorAction = z.infer<typeof errorActionSchema>;
+export type PublicFailure = z.infer<typeof publicFailureSchema>;
 export type ApiErrorResponse = z.infer<typeof apiErrorResponseSchema>;

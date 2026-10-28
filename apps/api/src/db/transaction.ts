@@ -29,12 +29,12 @@ export async function withTransaction<T>(
       throw new Error('PostgreSQL rolled back the transaction instead of committing');
     }
     return result;
-  } catch (error) {
+  } catch (error: unknown) {
     discard = !begun || committing;
     if (begun) {
       try {
         await client.query('ROLLBACK');
-      } catch (rollbackError) {
+      } catch (rollbackError: unknown) {
         // A client with uncertain transaction state must never return to the pool.
         discard = true;
         throw new AggregateError([error, rollbackError], 'Transaction and rollback failed', {

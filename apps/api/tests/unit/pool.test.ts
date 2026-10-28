@@ -52,7 +52,7 @@ describe('database pool', () => {
     const pool = createDatabasePool(environment);
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
-      pool.emit('error', new Error('secret-database-password'));
+      pool.emit('error', new Error('password=secret-database-password'));
       expect(log).toHaveBeenCalledTimes(1);
       expect(log.mock.calls.flat().join(' ')).not.toContain('secret-database-password');
       expect(pool.totalCount).toBe(0);

@@ -1,24 +1,14 @@
 /** Typed HTTP boundary; only public API URLs and contract-validated data enter the browser. */
-import { apiErrorResponseSchema, type ApiErrorCode } from '@ledger/contracts';
+import {
+  apiErrorResponseSchema,
+  publicFailureSchema,
+  resolveErrorMessage,
+  type ErrorCode,
+} from '@ledger/contracts';
 import type { ZodType } from 'zod';
-/** Public request failure categories, including uncertain network/response outcomes. */
-export type ClientErrorCode =
-  ApiErrorCode | 'NETWORK_ERROR' | 'INVALID_RESPONSE' | 'CONFIGURATION_ERROR';
-/** Safe consumer error; no server HTML or unvalidated error body is shown to users. */
-export class ApiClientError extends Error {
-  constructor(
-    message: string,
-    readonly code: ClientErrorCode,
-    readonly status = 0,
-    options?: ErrorOptions,
-  ) {
-    super(message, options);
-    this.name = 'ApiClientError';
-  }
-  get uncertain(): boolean {
-    return this.code === 'NETWORK_ERROR' || this.code === 'INVALID_RESPONSE' || this.status >= 500;
-  }
-}
+import { ApiClientError, reportError } from '../errors/index.js';
+export { ApiClientError } from '../errors/index.js';
+export type ClientErrorCode = ErrorCode;
 /** Fetches/validates one API response with cancellation and a bounded network timeout. */
 export async function apiRequest<T>(
   path: string,
@@ -33,10 +23,11 @@ export async function apiRequest<T>(
     const url = new URL(base);
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password)
       throw new Error('Invalid public API URL');
-  } catch (error) {
-    throw new ApiClientError('The API URL is not configured correctly.', 'CONFIGURATION_ERROR', 0, {
-      cause: error,
-    });
+  } catch (error: unknown) {
+    throw reportError(
+      new ApiClientError('API configuration invalid', 'CONFIGURATION_ERROR', 0, { cause: error }),
+      'api.configuration',
+    );
   }
   const controller = new AbortController();
   const cancel = () => controller.abort();
@@ -53,29 +44,59 @@ export async function apiRequest<T>(
       },
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
     });
+    const ticket = publicFailureSchema.shape.support_ticket_id.safeParse(
+      response.headers.get('X-Support-Ticket-ID'),
+    );
+    const headerTicketId = ticket.success ? ticket.data.toLowerCase() : undefined;
     let body: unknown;
     try {
       body = await response.json();
-    } catch (error) {
+    } catch (error: unknown) {
       throw new ApiClientError(
         'The server response could not be confirmed. Refresh your account before retrying.',
         'INVALID_RESPONSE',
         response.status,
         { cause: error },
+        headerTicketId,
       );
     }
+    const bodyTicket = publicFailureSchema.shape.support_ticket_id.safeParse(
+      typeof body === 'object' &&
+        body !== null &&
+        'error' in body &&
+        typeof body.error === 'object' &&
+        body.error !== null &&
+        'support_ticket_id' in body.error
+        ? body.error.support_ticket_id
+        : undefined,
+    );
+    const bodyTicketId = bodyTicket.success ? bodyTicket.data.toLowerCase() : undefined;
+    const supportTicketId = headerTicketId ?? bodyTicketId;
     if (!response.ok) {
       const parsed = apiErrorResponseSchema.safeParse(body);
-      if (parsed.success)
+      if (parsed.success) {
+        if (headerTicketId && headerTicketId !== bodyTicketId)
+          throw new ApiClientError(
+            'Response support IDs disagree',
+            'INVALID_RESPONSE',
+            response.status,
+            { cause: new Error('Support correlation mismatch') },
+            headerTicketId,
+          );
         throw new ApiClientError(
-          parsed.data.error.message,
+          'API rejected the request',
           parsed.data.error.code,
           response.status,
+          undefined,
+          supportTicketId,
         );
+      }
       throw new ApiClientError(
         'The server returned an unexpected response.',
         'INVALID_RESPONSE',
         response.status,
+        { cause: parsed.error },
+        supportTicketId,
       );
     }
     const parsed = schema.safeParse(body);
@@ -84,15 +105,24 @@ export async function apiRequest<T>(
         'The server response could not be confirmed. Refresh your account before retrying.',
         'INVALID_RESPONSE',
         response.status,
+        { cause: parsed.error },
+        supportTicketId,
       );
     return parsed.data;
-  } catch (error) {
-    if (options.signal?.aborted || error instanceof ApiClientError) throw error;
-    throw new ApiClientError(
-      'Connection interrupted. We could not confirm the result.',
-      'NETWORK_ERROR',
-      0,
-      { cause: error },
+  } catch (error: unknown) {
+    if (options.signal?.aborted) {
+      console.debug('Superseded request cancelled');
+      throw error;
+    }
+    if (error instanceof ApiClientError) throw reportError(error, 'api.request');
+    throw reportError(
+      new ApiClientError(
+        'Connection interrupted. We could not confirm the result.',
+        'NETWORK_ERROR',
+        0,
+        { cause: error },
+      ),
+      'api.request',
     );
   } finally {
     clearTimeout(timeout);
@@ -101,7 +131,6 @@ export async function apiRequest<T>(
 }
 /** Converts unknown failures into a stable human message without leaking raw internal errors. */
 export function errorMessage(error: unknown): string {
-  return error instanceof ApiClientError
-    ? error.message
-    : 'Something went wrong. Please try again.';
+  return resolveErrorMessage(error instanceof ApiClientError ? error.code : 'INTERNAL_ERROR')
+    .message;
 }

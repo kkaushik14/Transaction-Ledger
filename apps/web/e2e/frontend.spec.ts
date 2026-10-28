@@ -48,6 +48,10 @@ for (const width of [320, 375, 768, 1024, 1440]) {
       const channels = color.match(/\d+/g)?.slice(0, 3);
       expect(new Set(channels).size).toBe(1);
     }
+    await expect(page.locator('[data-reveal-complete]')).toHaveAttribute(
+      'data-reveal-complete',
+      'true',
+    );
     await page.screenshot({ path: info.outputPath(`landing-${width}.png`), fullPage: true });
   });
 }
@@ -104,7 +108,7 @@ test('hero CTAs focus the real form fields and skip link remains keyboard reacha
   await hero.getByRole('link', { name: 'Open an account' }).click();
   await expect(page.getByLabel('Account ID', { exact: true })).toBeFocused();
   await page.getByRole('button', { name: 'Open account', exact: true }).click();
-  await expect(page.getByText('Enter a valid Account ID.')).toBeVisible();
+  await expect(page.getByText(/Enter a valid Account ID/)).toBeVisible();
 });
 
 test('creates an account, credits/debits, filters history, rejects overspending, and copies UUID', async ({
@@ -257,12 +261,12 @@ test('lost committed response retries the identical reference and moves money on
   await page.goto(`/accounts/${id}`);
   await page.getByLabel('Amount', { exact: true }).fill('1.50');
   await page.getByRole('button', { name: 'Add credit', exact: true }).click();
-  await expect(page.getByText('Result not confirmed', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Result not confirmed/)).toBeVisible();
   await expect(page.getByLabel('Amount', { exact: true })).toBeDisabled();
   await page.reload();
   await expect(page.getByRole('button', { name: 'Retry same request' })).toBeVisible();
   await page.getByRole('button', { name: 'Retry same request' }).click();
-  await expect(page.getByText('Reference already used', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Reference already used/)).toBeVisible();
   await expect(page.getByTestId('account-balance')).toHaveText('1.50');
   expect(bodies).toHaveLength(2);
   expect(bodies[0]).toEqual(bodies[1]);
@@ -274,15 +278,13 @@ test('recovers from missing accounts and invalid routes without inventing data',
   page,
 }) => {
   await page.goto('/accounts/not-a-uuid');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('This account ID is not valid.');
+  await expect(page.getByRole('alert')).toContainText('Enter a valid Account ID');
   await page.goto('/accounts/64c7dc4e-509c-460b-9175-c79503c4f4c5');
   await expect(page.getByRole('alert')).toContainText('Account not found');
   await expect(page.getByTestId('account-balance')).toHaveCount(0);
   await page.goto('/missing');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(
-    'We couldn’t find that page.',
-  );
-  await page.getByRole('link', { name: 'Back to overview' }).click();
+  await expect(page.getByRole('alert')).toContainText('We couldn’t find that page.');
+  await page.getByRole('button', { name: 'Go Back' }).click();
   await expect(page).toHaveURL('/');
 });
 
@@ -402,7 +404,12 @@ test('a concurrent balance change is refreshed after rejected debit, and a defin
       status: 404,
       contentType: 'application/json',
       body: JSON.stringify({
-        error: { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found', details: {} },
+        error: {
+          code: 'ACCOUNT_NOT_FOUND',
+          message: 'Account not found',
+          support_ticket_id: '11111111-1111-4111-8111-111111111111',
+          action: 'fix_input',
+        },
       }),
     }),
   );

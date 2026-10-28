@@ -1,5 +1,7 @@
 /* Monochrome landing compositions use shared tokens and primitives, never page-local controls. */
 .hero {
+  position: relative;
+  isolation: isolate;
   padding-block: var(--space-20) var(--space-16);
   overflow: clip;
 }
@@ -35,9 +37,7 @@
   letter-spacing: -0.055em;
   max-width: 690px;
 }
-.hero h1 span {
-  color: var(--color-muted);
-}
+
 .heroDescription {
   color: var(--color-muted);
   font-size: var(--text-lg);
@@ -260,4 +260,22 @@
 .finalCta p {
   margin-top: var(--space-3);
   color: var(--color-muted);
+}
+
+/* The only animated backdrop stays within the hero, below real content and controls. */
+.heroBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: #fafafa;
+}
+.heroCopy {
+}
+
+/* Keep small hero copy legible even over the reference's deepest neutral cube faces. */
+.heroDescription,
+.heroNote,
+.heroStrip {
+  color: var(--color-text);
 }

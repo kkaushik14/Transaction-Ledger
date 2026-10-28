@@ -1,4 +1,5 @@
 /** Remembers only the selected account in this tab; unresolved write intents survive logging out. */
+import { ApplicationError, reportError } from '../../../errors/index.js';
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { accountIdParamsSchema, accountNameSchema } from '@ledger/contracts';
 import { ActiveAccountContext, type ActiveAccount } from '../hooks/index.js';
@@ -12,7 +13,13 @@ function restore(): ActiveAccount | undefined {
     if (!id.success) return;
     const name = accountNameSchema.safeParse('name' in value ? value.name : undefined);
     return { id: id.data.accountId.toLowerCase(), name: name.success ? name.data : undefined };
-  } catch {
+  } catch (error: unknown) {
+    reportError(
+      new ApplicationError('Session data could not be read', 'STORAGE_UNAVAILABLE', 0, {
+        cause: error,
+      }),
+      'session.read',
+    );
     return;
   }
 }
@@ -21,8 +28,13 @@ function remember(account: ActiveAccount | undefined) {
   try {
     if (account) sessionStorage.setItem(key, JSON.stringify(account));
     else sessionStorage.removeItem(key);
-  } catch {
-    /* Selection still works in memory when storage is unavailable. */
+  } catch (error: unknown) {
+    reportError(
+      new ApplicationError('Session selection could not be stored', 'STORAGE_UNAVAILABLE', 0, {
+        cause: error,
+      }),
+      'session.selection',
+    );
   }
 }
 /** Owns the session selection independently of account reads and all money state. */

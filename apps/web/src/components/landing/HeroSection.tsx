@@ -1,13 +1,17 @@
 /** Landing value proposition and working entry CTAs; preview figures are explicitly illustrative. */
-import { Container, Card, ButtonLink, Icon } from '../ui/index.js';
+import { useRef } from 'react';
+import { Container, Card, ButtonLink, Icon, TypewriterText } from '../ui/index.js';
 
 import { useActiveAccount } from '../../features/accounts/index.js';
 import styles from './landing.module.css';
+import { HeroBackdrop } from './HeroBackdrop.js';
 /** Presents actual ledger capabilities without inventing live accounts, metrics, or payment integrations. */
 export function HeroSection() {
+  const hero = useRef<HTMLElement>(null);
   const active = useActiveAccount()?.account;
   return (
-    <section className={styles.hero} aria-labelledby="hero-title">
+    <section ref={hero} className={styles.hero} aria-labelledby="hero-title">
+      <HeroBackdrop hoverTarget={hero} />
       <Container>
         <div className={`${styles.heroGrid} landing-hero-grid`}>
           <div className={styles.heroCopy}>
@@ -15,10 +19,11 @@ export function HeroSection() {
               <span className={styles.dot} />
               Clarity, entry by entry
             </p>
-            <h1 id="hero-title">
-              A clear view of <br />
-              every <span>transaction.</span>
-            </h1>
+            <TypewriterText
+              id="hero-title"
+              text="A clear view of every transaction."
+              breakAt={15}
+            />
             <p className={styles.heroDescription}>
               Money in. Money out. Every entry in its place. A simple ledger to record movements and
               always know where you stand.

@@ -29,7 +29,7 @@ export function TextField({ label, hint, error, id, className = '', ...props }: 
         id={controlId}
         className={`${styles.control} ${className}`}
         aria-describedby={described}
-        aria-invalid={Boolean(error) || undefined}
+        aria-invalid={Boolean(error) || props['aria-invalid'] || undefined}
       />
       {hint && (
         <p className={styles.hint} id={`${controlId}-hint`}>

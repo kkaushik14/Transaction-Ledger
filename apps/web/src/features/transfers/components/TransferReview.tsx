@@ -9,6 +9,7 @@ export interface TransferReviewProps {
   onConfirm: () => void;
   onEdit?: (() => void) | undefined;
   pending?: boolean;
+  showConfirm?: boolean;
   retry?: boolean;
   focusOnMount?: boolean;
 }
@@ -18,6 +19,7 @@ export function TransferReview({
   onConfirm,
   onEdit,
   pending = false,
+  showConfirm = true,
   retry = false,
   focusOnMount = false,
 }: TransferReviewProps) {
@@ -54,9 +56,11 @@ export function TransferReview({
       <p className={styles.note}>
         Check the destination ID and amount. Accepted transfers are permanent.
       </p>
-      <Button onClick={onConfirm} loading={pending}>
-        {pending ? 'Transferring…' : retry ? 'Retry same transfer' : 'Confirm transfer'}
-      </Button>
+      {showConfirm && (
+        <Button onClick={onConfirm} loading={pending}>
+          {pending ? 'Transferring…' : retry ? 'Retry same transfer' : 'Confirm transfer'}
+        </Button>
+      )}
       {onEdit && (
         <Button variant="subtle" disabled={pending} onClick={onEdit}>
           Edit transfer

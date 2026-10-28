@@ -1,12 +1,7 @@
 /** Composes verified domain components and hooks; server reads remain authoritative after every write. */
+import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
-import {
-  Card,
-  LoadingState,
-  StatusMessage,
-  Button,
-  ButtonLink,
-} from '../../../components/ui/index.js';
+import { Card, Skeleton, ErrorNotice } from '../../../components/ui/index.js';
 
 import { useAccount, useActiveAccount } from '../hooks/index.js';
 import { useTransactions, TransactionForm, TransactionHistory } from '../../transactions/index.js';
@@ -22,6 +17,7 @@ export function AccountWorkspace({
   accountId: string;
   name?: string | undefined;
 }) {
+  const navigate = useNavigate();
   const account = useAccount(accountId);
   const history = useTransactions(accountId);
   const active = useActiveAccount();
@@ -31,6 +27,8 @@ export function AccountWorkspace({
     if (account.data) select?.({ id: accountId, name });
     else if (account.error?.code === 'ACCOUNT_NOT_FOUND') forget?.(accountId);
   }, [account.data, account.error, accountId, name, select, forget]);
+  const combinedFailure = Boolean(account.error && history.error);
+  const relatedErrors = history.error ? [history.error] : undefined;
   const refresh = () => {
     account.refresh();
     history.refreshAfterMutation();
@@ -42,30 +40,15 @@ export function AccountWorkspace({
         name={name ?? (active?.account?.id === accountId ? active.account.name : undefined)}
       />
       {account.error && !account.data ? (
-        <div className="stack">
-          <StatusMessage
-            tone="error"
-            title={
-              account.error.code === 'ACCOUNT_NOT_FOUND'
-                ? 'Account not found'
-                : 'Could not load account'
-            }
-          >
-            {account.error.code === 'ACCOUNT_NOT_FOUND'
-              ? 'Check the account ID or open another account.'
-              : account.error.message}
-          </StatusMessage>
-          <div className="inline-actions">
-            <ButtonLink to="/#get-started" state={{ entry: 'lookup' }}>
-              Open another account
-            </ButtonLink>
-            <Button variant="secondary" onClick={account.refresh}>
-              Retry account
-            </Button>
-          </div>
-        </div>
+        <ErrorNotice
+          error={account.error}
+          context={combinedFailure ? 'account-data' : 'balance'}
+          relatedErrors={combinedFailure ? relatedErrors : undefined}
+          onRetry={combinedFailure ? refresh : account.refresh}
+          onGoBack={() => navigate('/#get-started', { state: { entry: 'lookup' } })}
+        />
       ) : !account.data ? (
-        <LoadingState label="Loading account balance…" />
+        <Skeleton variant="balance" />
       ) : (
         <>
           <AccountBalanceCard
@@ -75,13 +58,13 @@ export function AccountWorkspace({
           />
           {account.error && (
             <div className="stack account-status">
-              <StatusMessage tone="error" title="Balance refresh failed">
-                The shown balance is the last confirmed value. Retry updates this view without
-                sending funds.
-              </StatusMessage>
-              <Button variant="secondary" onClick={account.refresh}>
-                Retry balance
-              </Button>
+              <ErrorNotice
+                error={account.error}
+                context={combinedFailure ? 'account-data' : 'balance'}
+                relatedErrors={combinedFailure ? relatedErrors : undefined}
+                onRetry={combinedFailure ? refresh : account.refresh}
+                onGoBack={() => navigate('/#get-started', { state: { entry: 'lookup' } })}
+              />
             </div>
           )}
           <div className="account-workspace">
@@ -97,7 +80,8 @@ export function AccountWorkspace({
               <TransactionHistory
                 data={history.data}
                 loading={history.loading}
-                error={history.error?.message}
+                error={history.error}
+                errorReported={combinedFailure}
                 filter={history.filter}
                 onFilter={history.changeFilter}
                 onPage={history.changePage}

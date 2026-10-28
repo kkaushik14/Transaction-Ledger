@@ -240,8 +240,9 @@ SQL query must apply account and optional type filter, sort by `created_at DESC,
 {
   "error": {
     "code": "INSUFFICIENT_BALANCE",
-    "message": "Account has insufficient balance",
-    "details": {}
+    "support_ticket_id": "11111111-1111-4111-8111-111111111111",
+    "message": "The account has insufficient balance. Review the current balance and enter a smaller amount.",
+    "action": "fix_input"
   }
 }
 ```
@@ -257,7 +258,7 @@ SQL query must apply account and optional type filter, sort by `created_at DESC,
 
 The implemented HTTP boundary also returns `404 ROUTE_NOT_FOUND`, `413 PAYLOAD_TOO_LARGE`, and `415 UNSUPPORTED_MEDIA_TYPE` as documented in `../../../docs/api-reference.md`; these existing error codes must remain supported by the frontend.
 
-`details` may carry field-specific validation information but must not reveal secrets. Central middleware maps application errors and PostgreSQL uniqueness violations to these codes.
+The envelope contains only support_ticket_id, code, message and action. Field validation diagnostics are private; the shared local validation mapper supplies safe feedback. Central middleware maps typed domain errors and recognized PostgreSQL constraints to canonical HTTP statuses and allowlisted copy.
 
 ### 6.6 Other routes
 
@@ -545,3 +546,8 @@ Success/conflicts/balance rejections refresh authoritative source reads; destina
 The user's confirmed rule retains nonunique display names. AccountAccessAction presents Create an account when no account is selected and Log out after creation or a verified balance read. ActiveAccountProvider stores only a validated tab-scoped Account ID and optional known name. ActiveAccountCard and landing CTAs offer My account while selected; lookup can still open another account. Log out clears selection and returns home, preserving ledger data and unresolved commands. This is workspace navigation, without authentication or a new backend endpoint. Use Account ID in UI copy; retain the UUID format and Account/name fallback.
 
 Normalize account route identity to lowercase so case variants share the same workspace and retry state. Correlate balance/transaction/history responses with their requests. Persist standalone retry commands before POST, focus invalid descriptions, refresh authoritative reads on rejected balance guards, and never let failed read refreshes reclassify a committed write. A definitive missing-account read removes stale balance/write controls. Unknown network outcomes and retry configuration failures preserve original commands.
+
+
+Centralized error architecture: shared contracts own the strict failure schema, code/action unions and exhaustive public message resolver. API errors own typed domain classes and private causal logging; final middleware maps unknown errors and SQL/parser failures, generates server support IDs and emits safe envelopes. Browser errors own typed normalization, deduplicated bounded diagnostics, validation mapping and safe sync/async callbacks. ErrorNotice owns the four-field error presentation and action labels. React/global/bootstrap boundaries handle unexpected failures. Feature hooks keep recovery policy for their operation, with exact financial retries and read-only refresh actions. A combined balance/history failure shows one notice with a retry of both reads. See docs/api-reference.md for the coordinated failure-envelope change and diagnostics limits.
+
+Error-handling review: preserve router mount context in response locals before Express unwinds errors. Use the shared API JSON logger formatter for trusted injectable sinks, retaining timestamps, safe validation paths and redacted causal metadata. Keep a bounded private fallback if logging itself fails. Register displayed browser errors in ErrorNotice, link coalesced IDs in private metadata, and disable pending recovery actions. Combined balance/history failures retain the history view in a waiting state and expose one read-only Retry account action. Correlation mismatches retain valid server IDs but stay unconfirmed. See docs/error-handling.md for the operational lookup procedure and real browser/API trace evidence.

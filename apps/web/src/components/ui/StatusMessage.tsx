@@ -8,16 +8,13 @@ export function StatusMessage({
   title,
   children,
 }: {
-  tone?: 'info' | 'success' | 'error';
+  tone?: 'info' | 'success';
   title?: string;
   children: ReactNode;
 }) {
   return (
-    <div
-      role={tone === 'error' ? 'alert' : 'status'}
-      className={`${styles.status} ${tone === 'error' ? styles.errorStatus : ''}`}
-    >
-      <Icon name={tone === 'success' ? 'check' : tone === 'error' ? 'alert' : 'ledger'} />
+    <div role="status" className={styles.status}>
+      <Icon name={tone === 'success' ? 'check' : 'ledger'} />
       <div>
         {title && <strong>{title}</strong>}
         {children}

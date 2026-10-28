@@ -199,3 +199,119 @@
     transform: rotate(360deg);
   }
 }
+/* Error metadata wraps independently of narrow-screen copy and never exposes diagnostic internals. */
+.failure {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.failureMeta {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+
+/* Visual-only placeholders mirror balance, table and mobile history surfaces. */
+.skeleton {
+  display: block;
+  height: 0.875rem;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  background: currentColor;
+  opacity: 0.12;
+  animation: skeleton-pulse 1.6s ease-in-out infinite alternate;
+}
+.skeletonStack {
+  display: grid;
+  gap: var(--space-4);
+}
+.balanceSkeleton {
+  padding: var(--space-8);
+  background: var(--color-text);
+  color: var(--color-on-strong);
+  border-radius: var(--radius-lg);
+}
+.skeletonLabel {
+  width: 40%;
+  height: 1.4rem;
+}
+.skeletonAmount {
+  width: min(60%, 14rem);
+  height: clamp(2.13rem, 5.75vw, 3.8rem);
+}
+.skeletonFoot {
+  width: 70%;
+  margin-top: var(--space-4);
+}
+.skeletonRow {
+  display: grid;
+  grid-template-columns: 1fr 0.7fr 0.8fr 1.4fr;
+  gap: var(--space-5);
+  padding: var(--space-8) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.skeletonMobile {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.typewriter {
+  position: relative;
+  width: 100%;
+}
+.typewriterReserve {
+  display: block;
+  visibility: hidden;
+}
+.typewriterReveal {
+  position: absolute;
+  inset: 0;
+}
+@keyframes skeleton-pulse {
+  to {
+    opacity: 0.24;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .spinner {
+    animation: none;
+  }
+}
+
+/* One restrained feedback family, activated only on devices with genuine hover. */
+.card,
+.button,
+.control {
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+.card {
+  box-shadow: 0 2px 8px rgb(0 0 0 / 2%);
+}
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    border-color: var(--color-control-border);
+    box-shadow: var(--shadow-card);
+    transform: translateY(-1px);
+  }
+  .button:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+  .control:hover:not(:disabled) {
+    border-color: var(--color-text);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .button,
+  .control {
+    transition: none;
+    transform: none !important;
+  }
+}

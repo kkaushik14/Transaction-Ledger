@@ -1,15 +1,16 @@
 /** Public application errors with explicit safe messages and HTTP metadata. */
 import type { ApiErrorCode } from '@ledger/contracts';
 
-/** Carries only intentionally public error details; never wrap raw SQL error text here. */
+/** Internal typed failure; public messages are resolved by code, never from this message or details. */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     readonly code: ApiErrorCode,
     message: string,
     readonly details: Record<string, unknown> = {},
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = 'ApiError';
   }
 }

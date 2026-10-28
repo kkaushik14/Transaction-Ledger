@@ -7,10 +7,12 @@ import {
   TextField,
   TextAreaField,
   StatusMessage,
+  ErrorNotice,
   Icon,
 } from '../../../components/ui/index.js';
 
 import { useTransactionIntent } from '../hooks/index.js';
+import { ApplicationError, validationError, runSafely } from '../../../errors/index.js';
 import styles from './transactions.module.css';
 /** Exposes no mutable ID/timestamp/balance controls; the backend remains authoritative. */
 export function TransactionForm({
@@ -27,6 +29,15 @@ export function TransactionForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const amountRef = useRef<HTMLInputElement>(null);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const [validation, setValidation] = useState<ApplicationError>();
+  function clearErrors() {
+    setErrors({});
+    setValidation(undefined);
+    intent.dismissError();
+  }
+  function focusInvalid() {
+    (errors.amount ? amountRef : descriptionRef).current?.focus();
+  }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (intent.phase !== 'editing') return;
@@ -38,25 +49,31 @@ export function TransactionForm({
     });
     if (!parsed.success) {
       const next: Record<string, string> = {};
-      for (const issue of parsed.error.issues) next[String(issue.path[0])] = issue.message;
+      for (const issue of parsed.error.issues) next[String(issue.path[0])] = 'invalid';
+      setValidation(validationError(parsed.error.issues));
       setErrors(next);
       (next.amount ? amountRef : descriptionRef).current?.focus();
       return;
     }
-    setErrors({});
-    void intent.send(parsed.data);
+    clearErrors();
+    runSafely(() => intent.send(parsed.data), 'transaction.callback');
   }
   function newIntent() {
     intent.reset();
     setAmount('');
     setDescription('');
-    setErrors({});
+    clearErrors();
     requestAnimationFrame(() => amountRef.current?.focus());
   }
   const pending = intent.phase === 'submitting';
   const terminal = intent.phase === 'done' || intent.phase === 'duplicate';
   return (
-    <form noValidate onSubmit={submit} className={styles.form} aria-label="New transaction">
+    <form
+      noValidate
+      onSubmit={(event) => runSafely(() => submit(event), 'transaction.submit')}
+      className={styles.form}
+      aria-label="New transaction"
+    >
       <div className={styles.formIntro}>
         <h2 style={{ fontSize: 'var(--text-xl)' }}>New transaction</h2>
         <p>Add a credit or record a debit.</p>
@@ -82,9 +99,10 @@ export function TransactionForm({
           value={amount}
           onChange={(event) => {
             setAmount(event.target.value);
-            setErrors({});
+            clearErrors();
           }}
-          error={errors.amount}
+          aria-invalid={Boolean(errors.amount) || undefined}
+          aria-describedby={validation ? 'transaction-error' : undefined}
           hint="Positive amount · Up to 2 decimal places"
         />
         <TextAreaField
@@ -95,9 +113,10 @@ export function TransactionForm({
           value={description}
           onChange={(event) => {
             setDescription(event.target.value);
-            setErrors({});
+            clearErrors();
           }}
-          error={errors.description}
+          aria-invalid={Boolean(errors.description) || undefined}
+          aria-describedby={validation ? 'transaction-error' : undefined}
         />
       </fieldset>
       {intent.phase === 'editing' && (
@@ -106,28 +125,31 @@ export function TransactionForm({
             <Icon name={type === 'credit' ? 'plus' : 'minus'} />
             Add {type}
           </Button>
-          {intent.message && <StatusMessage tone="error">{intent.message}</StatusMessage>}
         </>
+      )}
+      {(validation ?? intent.error) && (
+        <ErrorNotice
+          id="transaction-error"
+          error={(validation ?? intent.error)!}
+          context="transaction"
+          uncertain={intent.phase === 'uncertain'}
+          onRetry={() => {
+            if (intent.payload && intent.phase === 'uncertain') return intent.send(intent.payload);
+            amountRef.current?.form?.requestSubmit();
+          }}
+          onFixInput={() => {
+            if (validation) focusInvalid();
+            else amountRef.current?.focus();
+          }}
+          onReview={onChanged}
+        />
       )}
       {pending && <Button loading>Recording {type}…</Button>}
       {intent.phase === 'uncertain' && (
         <>
-          <StatusMessage tone="error" title="Result not confirmed">
-            {intent.message} The original amount and reference are preserved.
-          </StatusMessage>
-          <Button
-            onClick={() => {
-              if (intent.payload) void intent.send(intent.payload);
-            }}
-          >
-            Retry same request
-          </Button>
           <Button variant="subtle" onClick={newIntent}>
             Start a different transaction
           </Button>
-          <p className={styles.footnote}>
-            Review your balance and history first. The earlier request may already be recorded.
-          </p>
         </>
       )}
       {intent.phase === 'done' && intent.result && (
@@ -138,9 +160,7 @@ export function TransactionForm({
           {intent.result.transaction.amount} recorded. Balance and history are being refreshed.
         </StatusMessage>
       )}
-      {intent.phase === 'duplicate' && (
-        <StatusMessage title="Reference already used">{intent.message}</StatusMessage>
-      )}
+
       {terminal && (
         <Button variant="secondary" onClick={newIntent}>
           New transaction

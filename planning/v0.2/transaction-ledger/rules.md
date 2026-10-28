@@ -158,7 +158,7 @@ Use `accountId` internally where idiomatic TypeScript, but serialize the API's `
 ## 7. API and error-handling rules
 
 - API prefix: `/api/v1`. Use JSON requests/responses and documented status codes.
-- Implement one standardized error response shape: `{ "error": { "code": "...", "message": "...", "details": {} } }`.
+- Implement one standardized error response shape: `{ "error": { "support_ticket_id": "UUID", "code": "...", "message": "...", "action": "retry|go_back|review|fix_input|reload" } }`.
 - Use `201` for account/transaction creation, `200` for successful reads, `400` for invalid input, `404` for missing accounts, `409` for duplicates, and `422` for insufficient funds. Use `500` for unexpected failures without leaking secrets or SQL details.
 - Validate URL params, body shape, permitted fields, pagination, and filter values. Unknown state-mutating fields should not silently take effect.
 - Catch and map known PostgreSQL errors centrally. Log errors server-side with request context but omit passwords, database URLs, or other secrets.
@@ -245,3 +245,8 @@ Official implementation references:
 
 
 Account navigation clarification: use “Account ID” for user-facing UUID labels. Keep duplicate display names allowed. “Log out” clears tab workspace selection only; never describe it as account deletion or access revocation, and never erase unresolved financial retry commands. Account selection must not invent an authentication boundary or cache authoritative balances.
+
+
+Centralized error handling follow-up (user-authorized): typed domain errors preserve original causes; caught values are unknown and narrowed safely. Public messages/actions come only from the shared exhaustive catalog. Never render raw Error.message, Zod messages, HTTP copy, driver objects or stacks. Use ErrorNotice for all error/validation UI, one alert per failure with support ID, code, mapped message and an actionable button. Keep success/info messages separate. Preserve uncertain command/reference safety; no automatic financial retries or unconfirmed account-creation retry. Log handled/ignored persistence failures internally, expected request cancellation at debug level, and unexpected async/render/process errors through the centralized handlers. Private server diagnostics redact credentials and URLs; browser console logs metadata only, with a bounded private causal buffer.
+
+Private diagnostic logs and generated test/report directories must not be served by the development web server. Preserve the installed Vite secret-file deny defaults when extending its filesystem restrictions, and verify log downloads are blocked while trusted local filesystem inspection remains available.

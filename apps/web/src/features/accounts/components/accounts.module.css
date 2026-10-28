@@ -104,3 +104,9 @@
   font-size: clamp(0.9375rem, 3vw, 2.5rem);
   white-space: nowrap;
 }
+
+.balanceFoot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

@@ -1,0 +1,9 @@
+/* Utilities for the supplied cube component only. No Preflight or theme/reset injection. */
+@layer utilities;
+@import 'tailwindcss/utilities.css' layer(utilities) source(none);
+@source '../components/ui/cubes/background-cubes-grid.tsx';
+
+/* The reference inset-0 utility needs only Tailwind's spacing scale, not its global theme/reset. */
+@theme {
+  --spacing: 0.25rem;
+}

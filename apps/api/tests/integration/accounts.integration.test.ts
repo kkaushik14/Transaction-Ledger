@@ -214,10 +214,11 @@ describe('account HTTP API', () => {
         .post('/api/v1/accounts')
         .send({ name: 'Alex' })
         .expect(500);
-      expect(apiErrorResponseSchema.parse(response.body).error).toEqual({
+      expect(apiErrorResponseSchema.parse(response.body).error).toMatchObject({
         code: 'INTERNAL_ERROR',
-        message: 'An unexpected error occurred',
-        details: {},
+        message: expect.stringContaining('Something went wrong'),
+        action: 'retry',
+        support_ticket_id: expect.any(String),
       });
       expect(JSON.stringify(response.body)).not.toContain('secret');
       expect(JSON.stringify(log.mock.calls)).not.toContain('secret');

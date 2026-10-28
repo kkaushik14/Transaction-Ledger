@@ -6,7 +6,7 @@ import {
   type AccountBalanceResponse,
   type CreateAccountRequest,
 } from '@ledger/contracts';
-import { ApiError } from '../../errors/index.js';
+import { AccountNotFoundError } from '../../errors/index.js';
 import type { AccountsRepository } from './accounts.repository.js';
 
 /** Implemented account use cases; no credit/debit operations are exposed. */
@@ -25,7 +25,7 @@ export function createAccountsService(repository: AccountsRepository): AccountsS
     },
     async getBalance(accountId) {
       const row = await repository.findBalance(accountId);
-      if (!row) throw new ApiError(404, 'ACCOUNT_NOT_FOUND', 'Account not found');
+      if (!row) throw new AccountNotFoundError();
       return accountBalanceResponseSchema.parse({ data: row }).data;
     },
   };

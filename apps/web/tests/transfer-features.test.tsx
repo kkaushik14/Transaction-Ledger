@@ -161,7 +161,7 @@ describe('transfer command workflow', () => {
     expect(screen.getByLabelText(label)).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByLabelText(label)).toHaveFocus();
     if (value === 'not-a-uuid')
-      expect(screen.getByText('Enter a valid destination Account ID.')).toBeInTheDocument();
+      expect(screen.getByText(/Enter a valid Account ID/)).toBeInTheDocument();
     expect(fetcher).not.toHaveBeenCalled();
   });
   it('normalizes the reviewed payload, allows edits before sending, and refreshes after one confirmed POST', async () => {
@@ -218,14 +218,32 @@ describe('transfer command workflow', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn<typeof fetch>(async () =>
-        jsonResponse({ error: { code, message: 'Transfer rejected', details: {} } }, status),
+        jsonResponse(
+          {
+            error: {
+              code,
+              message: 'Transfer rejected',
+              support_ticket_id: '11111111-1111-4111-8111-111111111111',
+              action: 'fix_input',
+            },
+          },
+          status,
+        ),
       ),
     );
     const changed = vi.fn();
     form(changed);
     await review();
     await userEvent.click(screen.getByRole('button', { name: 'Confirm transfer' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Transfer rejected');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      code === 'VALIDATION_ERROR'
+        ? 'Check the entered details'
+        : code === 'ACCOUNT_NOT_FOUND'
+          ? 'not found'
+          : code === 'INSUFFICIENT_BALANCE'
+            ? 'insufficient balance'
+            : 'balance limit',
+    );
     expect(screen.getByLabelText('Transfer amount')).toHaveValue('1.5');
     expect(screen.getByLabelText('Destination account ID')).toHaveValue(destination.toUpperCase());
     expect(readTransferIntent(accountId)).toBeUndefined();
@@ -235,7 +253,17 @@ describe('transfer command workflow', () => {
     'treats %s as a conflict, preserves its intent, and requires review before a new reference',
     async (code) => {
       const fetcher = vi.fn<typeof fetch>(async () =>
-        jsonResponse({ error: { code, message: 'Already used', details: {} } }, 409),
+        jsonResponse(
+          {
+            error: {
+              code,
+              message: 'Already used',
+              support_ticket_id: '11111111-1111-4111-8111-111111111111',
+              action: 'fix_input',
+            },
+          },
+          409,
+        ),
       );
       const changed = vi.fn();
       vi.stubGlobal('fetch', fetcher);
@@ -264,7 +292,7 @@ describe('transfer command workflow', () => {
     const first = form();
     await review();
     await userEvent.click(screen.getByRole('button', { name: 'Confirm transfer' }));
-    expect(await screen.findByText('Transfer result unconfirmed')).toBeInTheDocument();
+    expect(await screen.findByText(/Transfer result unconfirmed/)).toBeInTheDocument();
     const original = String(fetcher.mock.calls[0]?.[1]?.body);
     first.unmount();
     const changed = vi.fn();
@@ -285,7 +313,14 @@ describe('transfer command workflow', () => {
         vi.fn<typeof fetch>(async (_url, init) => {
           if (kind === 'server')
             return jsonResponse(
-              { error: { code: 'INTERNAL_ERROR', message: 'Unconfirmed', details: {} } },
+              {
+                error: {
+                  code: 'INTERNAL_ERROR',
+                  message: 'Unconfirmed',
+                  support_ticket_id: '11111111-1111-4111-8111-111111111111',
+                  action: 'fix_input',
+                },
+              },
               500,
             );
           if (kind === 'invalid') return new Response('not json', { status: 201 });
@@ -295,7 +330,7 @@ describe('transfer command workflow', () => {
       form();
       await review();
       await userEvent.click(screen.getByRole('button', { name: 'Confirm transfer' }));
-      expect(await screen.findByText('Transfer result unconfirmed')).toBeInTheDocument();
+      expect(await screen.findByText(/Transfer result unconfirmed/)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Retry same transfer' })).toBeEnabled();
       expect(readTransferIntent(accountId)?.amount).toBe('1.50');
       expect(screen.queryByText('Transfer complete')).not.toBeInTheDocument();
@@ -307,12 +342,22 @@ describe('transfer command workflow', () => {
     });
     const fetcher = successfulFetch();
     vi.stubGlobal('fetch', fetcher);
-    form();
-    await review();
-    await userEvent.click(screen.getByRole('button', { name: 'Confirm transfer' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Retry details could not be saved');
-    expect(fetcher).not.toHaveBeenCalled();
-    set.mockRestore();
+    try {
+      form();
+      await review();
+      await userEvent.click(screen.getByRole('button', { name: 'Confirm transfer' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Retry details could not be saved',
+      );
+      expect(fetcher).not.toHaveBeenCalled();
+      expect(screen.queryByRole('button', { name: 'Confirm transfer' })).not.toBeInTheDocument();
+      set.mockRestore();
+      await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+      expect(await screen.findByText('Transfer complete')).toBeInTheDocument();
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    } finally {
+      set.mockRestore();
+    }
   });
   it('ignores corrupt/cross-account session data and never moves an unresolved intent to another account', () => {
     sessionStorage.setItem(`transaction-ledger:transfer-intent:${accountId}`, '{bad');

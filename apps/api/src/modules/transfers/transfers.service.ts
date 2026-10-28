@@ -6,7 +6,12 @@ import {
   type CreateTransferResponse,
 } from '@ledger/contracts';
 import { withTransaction } from '../../db/index.js';
-import { ApiError } from '../../errors/index.js';
+import {
+  AccountNotFoundError,
+  DuplicateReferenceError,
+  InsufficientBalanceError,
+  BalanceLimitError,
+} from '../../errors/index.js';
 import { createTransfersRepository } from './transfers.repository.js';
 
 /** The transfer feature exposes creation only; no update/delete or distributed-service behavior. */
@@ -20,23 +25,15 @@ export function createTransfersService(pool: Pick<Pool, 'connect'>): TransfersSe
       return withTransaction(pool, async (client) => {
         const repository = createTransfersRepository(client);
         if (!(await repository.lockAccounts(input))) {
-          throw new ApiError(404, 'ACCOUNT_NOT_FOUND', 'Source or destination account not found');
+          throw new AccountNotFoundError();
         }
         // Check duplicates before funds so retries remain conflicts even after the
         // earlier transfer exhausted the source. Both account locks cover standalone writes too.
         if (await repository.hasTransfer(input)) {
-          throw new ApiError(
-            409,
-            'DUPLICATE_TRANSFER',
-            'Reference already used for this source account',
-          );
+          throw new DuplicateReferenceError('transfer');
         }
         if (await repository.hasLedgerReference(input)) {
-          throw new ApiError(
-            409,
-            'DUPLICATE_TRANSACTION',
-            'Reference already used for a participating account',
-          );
+          throw new DuplicateReferenceError('transaction');
         }
         const transfer = await repository.insertTransfer(input);
         const sourceBalance = await repository.updateBalance(
@@ -45,11 +42,7 @@ export function createTransfersService(pool: Pick<Pool, 'connect'>): TransfersSe
           'debit',
         );
         if (sourceBalance === undefined) {
-          throw new ApiError(
-            422,
-            'INSUFFICIENT_BALANCE',
-            'Source account has insufficient balance',
-          );
+          throw new InsufficientBalanceError();
         }
         const destinationBalance = await repository.updateBalance(
           input.destination_account_id,
@@ -57,11 +50,7 @@ export function createTransfersService(pool: Pick<Pool, 'connect'>): TransfersSe
           'credit',
         );
         if (destinationBalance === undefined) {
-          throw new ApiError(
-            422,
-            'BALANCE_LIMIT_EXCEEDED',
-            'Transfer would exceed the destination balance limit',
-          );
+          throw new BalanceLimitError();
         }
         const debit = await repository.insertLeg(transfer, 'debit');
         const credit = await repository.insertLeg(transfer, 'credit');

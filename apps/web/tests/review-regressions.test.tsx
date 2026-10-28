@@ -99,7 +99,14 @@ describe('account selection and logging out', () => {
       'fetch',
       vi.fn<typeof fetch>(async () =>
         jsonResponse(
-          { error: { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found', details: {} } },
+          {
+            error: {
+              code: 'ACCOUNT_NOT_FOUND',
+              message: 'Account not found',
+              support_ticket_id: '11111111-1111-4111-8111-111111111111',
+              action: 'fix_input',
+            },
+          },
           404,
         ),
       ),
@@ -245,7 +252,14 @@ describe('write/read safety', () => {
     await waitFor(() => expect(result.current.data).toBeDefined());
     fetcher.mockImplementation(async () =>
       jsonResponse(
-        { error: { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found', details: {} } },
+        {
+          error: {
+            code: 'ACCOUNT_NOT_FOUND',
+            message: 'Account not found',
+            support_ticket_id: '11111111-1111-4111-8111-111111111111',
+            action: 'fix_input',
+          },
+        },
         404,
       ),
     );

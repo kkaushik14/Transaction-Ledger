@@ -2,18 +2,24 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createAccountRequestSchema } from '@ledger/contracts';
-import { createAccount, ApiClientError, errorMessage } from '../../../api/index.js';
+import { createAccount } from '../../../api/index.js';
 
-import { Button, TextField, StatusMessage, Icon } from '../../../components/ui/index.js';
+import { Button, TextField, ErrorNotice, Icon } from '../../../components/ui/index.js';
 
+import {
+  ApplicationError,
+  reportError,
+  runSafely,
+  validationError,
+} from '../../../errors/index.js';
 import styles from './accounts.module.css';
 import { useActiveAccount } from '../hooks/index.js';
 /** Creates an account without accepting a balance or pretending to provide authentication. */
 export function AccountCreateForm() {
   const active = useActiveAccount();
   const [name, setName] = useState('');
-  const [fieldError, setFieldError] = useState<string>();
-  const [error, setError] = useState<string>();
+  const [fieldError, setFieldError] = useState(false);
+  const [error, setError] = useState<ApplicationError>();
   const [pending, setPending] = useState(false);
   const lock = useRef(false);
   const mounted = useRef(true);
@@ -30,29 +36,31 @@ export function AccountCreateForm() {
     if (lock.current) return;
     const parsed = createAccountRequestSchema.safeParse({ name });
     if (!parsed.success) {
-      setFieldError(parsed.error.issues[0]?.message ?? 'Enter an account name.');
+      setFieldError(true);
+      setError(validationError(parsed.error.issues));
       field.current?.focus();
       return;
     }
     lock.current = true;
     setPending(true);
     setError(undefined);
-    setFieldError(undefined);
+    setFieldError(false);
     try {
       const result = await createAccount(parsed.data);
       // A completed write must not pull the user back after they leave account entry.
       if (!mounted.current) return;
       active?.select({ id: result.data.id, name: result.data.name });
-      void navigate(`/accounts/${result.data.id}`, {
-        state: { accountId: result.data.id, accountName: result.data.name },
-      });
-    } catch (error) {
-      if (!mounted.current) return;
-      setError(
-        error instanceof ApiClientError && error.uncertain
-          ? 'We could not confirm whether the account was created. Retrying may create another account.'
-          : errorMessage(error),
+      runSafely(
+        () =>
+          navigate(`/accounts/${result.data.id}`, {
+            state: { accountId: result.data.id, accountName: result.data.name },
+          }),
+        'account.navigation',
       );
+    } catch (error: unknown) {
+      const failure = reportError(error, 'account.create');
+      if (!mounted.current) return;
+      setError(failure);
     } finally {
       lock.current = false;
       if (mounted.current) setPending(false);
@@ -61,7 +69,7 @@ export function AccountCreateForm() {
   return (
     <form
       noValidate
-      onSubmit={(event) => void submit(event)}
+      onSubmit={(event) => runSafely(() => submit(event), 'account.create.callback')}
       className={styles.form}
       aria-label="Create an account"
     >
@@ -81,13 +89,28 @@ export function AccountCreateForm() {
         value={name}
         onChange={(event) => {
           setName(event.target.value);
-          setFieldError(undefined);
+          setFieldError(false);
+          setError(undefined);
         }}
-        error={fieldError}
-        disabled={pending}
+        aria-invalid={fieldError || undefined}
+        aria-describedby={error ? 'account-create-error' : undefined}
+        disabled={pending || Boolean(error?.uncertain)}
       />
-      {error && <StatusMessage tone="error">{error}</StatusMessage>}
-      <Button type="submit" loading={pending}>
+      {error && (
+        <ErrorNotice
+          id="account-create-error"
+          error={error}
+          context="account-create"
+          uncertain={error.uncertain}
+          onFixInput={() => field.current?.focus()}
+          onRetry={() => field.current?.form?.requestSubmit()}
+          onGoBack={() => {
+            setError(undefined);
+            return navigate('/#get-started', { state: { entry: 'lookup' } });
+          }}
+        />
+      )}
+      <Button type="submit" loading={pending} disabled={Boolean(error?.uncertain)}>
         {pending ? 'Creating account…' : 'Create account'}
         {!pending && <Icon name="arrow" />}
       </Button>

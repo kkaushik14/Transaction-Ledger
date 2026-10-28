@@ -4,13 +4,14 @@ import { createTransferRequestSchema } from '@ledger/contracts';
 import {
   Button,
   Icon,
-  StatusMessage,
+  ErrorNotice,
   TextField,
   TextAreaField,
 } from '../../../components/ui/index.js';
 import { useTransferIntent } from '../hooks/index.js';
 import { TransferReview } from './TransferReview';
 import { TransferReceipt } from './TransferReceipt';
+import { ApplicationError, validationError, runSafely } from '../../../errors/index.js';
 import styles from './transfers.module.css';
 /** The current route fixes the source; the existing backend is authoritative for funds and destination existence. */
 export function TransferForm({
@@ -29,6 +30,20 @@ export function TransferForm({
   const destinationRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const [validation, setValidation] = useState<ApplicationError>();
+  function clearErrors() {
+    setErrors({});
+    setValidation(undefined);
+    intent.dismissError();
+  }
+  function focusInvalid() {
+    (errors.destination_account_id
+      ? destinationRef
+      : errors.amount
+        ? amountRef
+        : descriptionRef
+    ).current?.focus();
+  }
   function focusDestination() {
     requestAnimationFrame(() => destinationRef.current?.focus());
   }
@@ -44,13 +59,8 @@ export function TransferForm({
     });
     if (!parsed.success) {
       const next: Record<string, string> = {};
-      for (const issue of parsed.error.issues) {
-        const field = String(issue.path[0]);
-        next[field] =
-          field === 'destination_account_id' && issue.code === 'invalid_format'
-            ? 'Enter a valid destination Account ID.'
-            : issue.message;
-      }
+      for (const issue of parsed.error.issues) next[String(issue.path[0])] = 'invalid';
+      setValidation(validationError(parsed.error.issues));
       setErrors(next);
       (next.destination_account_id
         ? destinationRef
@@ -60,7 +70,7 @@ export function TransferForm({
       ).current?.focus();
       return;
     }
-    setErrors({});
+    clearErrors();
     intent.review(parsed.data);
   }
   function newTransfer() {
@@ -68,7 +78,7 @@ export function TransferForm({
     setAmount('');
     setDescription('');
     setDestination('');
-    setErrors({});
+    clearErrors();
     setReviewedConflict(false);
     focusDestination();
   }
@@ -77,7 +87,7 @@ export function TransferForm({
       noValidate
       aria-label="Transfer between accounts"
       className={styles.form}
-      onSubmit={review}
+      onSubmit={(event) => runSafely(() => review(event), 'transfer.review')}
     >
       <div className={styles.intro}>
         <h2>Transfer between accounts</h2>
@@ -99,10 +109,11 @@ export function TransferForm({
             required
             autoComplete="off"
             placeholder="Paste the destination Account ID"
-            error={errors.destination_account_id}
+            aria-invalid={Boolean(errors.destination_account_id) || undefined}
+            aria-describedby={validation ? 'transfer-error' : undefined}
             onChange={(event) => {
               setDestination(event.target.value);
-              setErrors({});
+              clearErrors();
             }}
           />
           <TextField
@@ -115,10 +126,11 @@ export function TransferForm({
             autoComplete="off"
             placeholder="0.00"
             hint="Positive amount · Up to 2 decimal places"
-            error={errors.amount}
+            aria-invalid={Boolean(errors.amount) || undefined}
+            aria-describedby={validation ? 'transfer-error' : undefined}
             onChange={(event) => {
               setAmount(event.target.value);
-              setErrors({});
+              clearErrors();
             }}
           />
           <TextAreaField
@@ -126,10 +138,11 @@ export function TransferForm({
             label="Transfer description (optional)"
             name="transfer_description"
             value={description}
-            error={errors.description}
+            aria-invalid={Boolean(errors.description) || undefined}
+            aria-describedby={validation ? 'transfer-error' : undefined}
             onChange={(event) => {
               setDescription(event.target.value);
-              setErrors({});
+              clearErrors();
             }}
           />
           <Button type="submit">
@@ -137,24 +150,25 @@ export function TransferForm({
           </Button>
         </>
       )}
-      {intent.message && (
-        <StatusMessage
-          tone="error"
-          title={
-            intent.phase === 'uncertain'
-              ? 'Transfer result unconfirmed'
-              : intent.phase === 'conflict'
-                ? 'Transfer reference already used'
-                : ''
-          }
-        >
-          {intent.message}
-        </StatusMessage>
+      {(validation ?? intent.error) && (
+        <ErrorNotice
+          id="transfer-error"
+          error={(validation ?? intent.error)!}
+          context="transfer"
+          uncertain={intent.phase === 'uncertain'}
+          onRetry={intent.send}
+          onReview={onChanged}
+          onFixInput={() => {
+            if (validation) focusInvalid();
+            else if (intent.error?.code === 'ACCOUNT_NOT_FOUND') destinationRef.current?.focus();
+            else amountRef.current?.focus();
+          }}
+        />
       )}
       {intent.payload && ['reviewing', 'submitting', 'uncertain'].includes(intent.phase) && (
         <TransferReview
           payload={intent.payload}
-          onConfirm={() => void intent.send()}
+          onConfirm={() => runSafely(intent.send, 'transfer.confirm')}
           onEdit={
             intent.phase === 'reviewing'
               ? () => {
@@ -165,19 +179,9 @@ export function TransferForm({
           }
           pending={intent.phase === 'submitting'}
           retry={intent.phase === 'uncertain'}
+          showConfirm={intent.phase !== 'uncertain' && !intent.error}
           focusOnMount={intent.phase === 'reviewing'}
         />
-      )}
-      {intent.phase === 'uncertain' && (
-        <>
-          <p className={styles.note}>
-            A timeout does not mean the transfer failed. Retry keeps the original destination,
-            amount and reference.
-          </p>
-          <Button variant="secondary" onClick={onChanged}>
-            Refresh account
-          </Button>
-        </>
       )}
       {intent.phase === 'conflict' && (
         <>
@@ -187,9 +191,6 @@ export function TransferForm({
               <code>{intent.payload?.reference_id}</code>
             </dd>
           </dl>
-          <Button variant="secondary" onClick={onChanged}>
-            Refresh account
-          </Button>
           <label className={styles.acknowledge}>
             <input
               type="checkbox"

@@ -57,13 +57,13 @@ describe('UI primitives', () => {
     render(<IconButton label="Copy account ID" icon="copy" />);
     expect(screen.getByRole('button', { name: 'Copy account ID' })).toBeInTheDocument();
   });
-  it('communicates errors through a semantic alert', () => {
+  it('communicates non-error updates through a polite status', () => {
     render(
-      <StatusMessage tone="error" title="Request failed">
+      <StatusMessage tone="info" title="Request failed">
         Try again
       </StatusMessage>,
     );
-    expect(screen.getByRole('alert')).toHaveTextContent('Request failedTry again');
+    expect(screen.getByRole('status')).toHaveTextContent('Request failedTry again');
   });
   it('uses server page boundaries and descriptive navigation', async () => {
     const change = vi.fn();

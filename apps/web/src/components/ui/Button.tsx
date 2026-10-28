@@ -2,6 +2,7 @@
 import type { ComponentPropsWithRef, ComponentProps } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './ui.module.css';
+import { Spinner } from './Spinner.js';
 /** Intent/visual hierarchy shared by button and link controls. */
 export type ButtonVariant = 'primary' | 'secondary' | 'subtle';
 /** Native button props plus explicit asynchronous state. */
@@ -27,7 +28,7 @@ export function Button({
       aria-busy={loading || undefined}
       className={`${styles.button} ${styles[variant]} ${className}`}
     >
-      {loading && <span className={styles.spinner} aria-hidden="true" />}
+      {loading && <Spinner />}
       {children}
     </button>
   );

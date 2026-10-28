@@ -45,3 +45,17 @@ export {
   type TransactionHistoryQuery,
   type TransactionHistoryResponse,
 } from './transactions.contract.js';
+export {
+  errorCodeSchema,
+  errorActionSchema,
+  publicFailureSchema,
+  type ErrorCode,
+  type ErrorAction,
+  type PublicFailure,
+} from './errors.contract.js';
+export {
+  resolveErrorMessage,
+  resolveActionLabel,
+  assertNever,
+  type ErrorContext,
+} from './error-messages.js';

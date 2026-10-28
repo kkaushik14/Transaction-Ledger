@@ -5,3 +5,5 @@ export { GetStartedSection } from './GetStartedSection.js';
 export { HeroSection } from './HeroSection.js';
 export { HowItWorksSection } from './HowItWorksSection.js';
 export { LedgerPrinciplesSection } from './LedgerPrinciplesSection.js';
+
+export { HeroBackdrop } from './HeroBackdrop.js';

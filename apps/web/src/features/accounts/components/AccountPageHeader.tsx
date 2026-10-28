@@ -1,8 +1,9 @@
 /** Account identity and clipboard feedback; unknown names use the approved Account/UUID fallback. */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Icon, IconButton } from '../../../components/ui/index.js';
+import { Icon, IconButton, ErrorNotice } from '../../../components/ui/index.js';
 
+import { ApplicationError, reportError, runSafely } from '../../../errors/index.js';
 import styles from './accounts.module.css';
 /** Uses only a genuinely known name; copy failure leaves the full selectable UUID visible. */
 export function AccountPageHeader({
@@ -13,12 +14,22 @@ export function AccountPageHeader({
   name?: string | undefined;
 }) {
   const [copied, setCopied] = useState('');
+  const [error, setError] = useState<ApplicationError>();
   async function copy() {
+    setError(undefined);
+    setCopied('');
     try {
       await navigator.clipboard.writeText(accountId);
       setCopied('Account ID copied.');
-    } catch {
-      setCopied('Could not copy. Select the account ID to copy it manually.');
+    } catch (error: unknown) {
+      setError(
+        reportError(
+          new ApplicationError('Clipboard copy failed', 'CLIPBOARD_UNAVAILABLE', 0, {
+            cause: error,
+          }),
+          'clipboard.copy',
+        ),
+      );
     }
   }
   return (
@@ -36,13 +47,14 @@ export function AccountPageHeader({
               label="Copy account ID"
               icon="copy"
               variant="subtle"
-              onClick={() => void copy()}
+              onClick={() => runSafely(copy, 'clipboard.callback')}
             />
           </div>
           <span role="status" className={styles.uuid}>
             {copied}
           </span>
         </div>
+        {error && <ErrorNotice error={error} onRetry={copy} />}
         <span className={styles.demoBadge}>
           <Icon name="ledger" />
           Ledger workspace

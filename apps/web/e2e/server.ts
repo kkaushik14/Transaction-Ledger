@@ -1,4 +1,7 @@
 /** Browser-test-only API fixture: isolated PostgreSQL, no .env, no hosted ledger writes. */
+import { appendFileSync, mkdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { createErrorLogger } from '../../api/src/errors/index.js';
 import { createServer } from 'node:http';
 import { createApp } from '../../api/src/index.js';
 import { createTestPostgres } from '../../api/tests/helpers/index.js';
@@ -9,7 +12,15 @@ function stopDatabase() {
   cleanup ??= fixture.stop();
   return cleanup;
 }
-const app = createApp({ database: fixture.pool, webOrigin: 'http://127.0.0.1:5173' });
+// Fixture-only log output proves that a UI ticket resolves to an actual serialized API record.
+const diagnosticDirectory = fileURLToPath(new URL('../test-results/', import.meta.url));
+const diagnosticFile = fileURLToPath(new URL('../test-results/api-errors.jsonl', import.meta.url));
+const logger = createErrorLogger((line) => {
+  console.error(line);
+  mkdirSync(diagnosticDirectory, { recursive: true });
+  appendFileSync(diagnosticFile, `${line}\n`);
+});
+const app = createApp({ database: fixture.pool, webOrigin: 'http://127.0.0.1:5173', logger });
 const server = createServer((request, response) => {
   if (request.method === 'POST' && request.url === '/__test/cleanup') {
     void stopDatabase().then(

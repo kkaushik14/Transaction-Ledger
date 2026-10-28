@@ -4,6 +4,7 @@
  */
 import { X509Certificate } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { logInternalError } from '../errors/index.js';
 import pg, { type PoolConfig } from 'pg';
 import type { ApiEnvironment } from '../config/index.js';
 
@@ -20,8 +21,10 @@ export function buildPoolConfig(environment: ApiEnvironment): PoolConfig {
     ) {
       throw new Error('Invalid CA');
     }
-  } catch {
-    throw new Error('DATABASE_SSL_CA_PATH must identify a readable, valid CA certificate');
+  } catch (error: unknown) {
+    throw new Error('DATABASE_SSL_CA_PATH must identify a readable, valid CA certificate', {
+      cause: error,
+    });
   }
   // Use explicit connection fields so no connection-string SSL setting can
   // replace rejectUnauthorized or the selected trust anchor, even for direct callers.
@@ -47,8 +50,8 @@ export function createDatabasePool(environment: ApiEnvironment): pg.Pool {
   const pool = new pg.Pool(buildPoolConfig(environment));
   // pg removes failed idle clients. Handle its error event without logging driver
   // messages, which may contain SQL or sensitive connection context.
-  pool.on('error', () => {
-    console.error('An idle PostgreSQL connection failed and was removed from the pool.');
+  pool.on('error', (error: unknown) => {
+    logInternalError(error, 'database.idle-client');
   });
   return pool;
 }

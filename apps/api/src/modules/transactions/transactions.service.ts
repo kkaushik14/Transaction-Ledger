@@ -9,7 +9,12 @@ import {
 } from '@ledger/contracts';
 import type { Pool } from 'pg';
 import { withTransaction } from '../../db/index.js';
-import { ApiError } from '../../errors/index.js';
+import {
+  AccountNotFoundError,
+  DuplicateReferenceError,
+  InsufficientBalanceError,
+  BalanceLimitError,
+} from '../../errors/index.js';
 import { createTransactionsRepository } from './transactions.repository.js';
 
 /** Account-scoped immutable transaction writes and filtered/paginated history reads. */
@@ -34,7 +39,7 @@ export function createTransactionsService(pool: Pick<Pool, 'connect'>): Transact
         await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
         const repository = createTransactionsRepository(client);
         if (!(await repository.accountExists(accountId))) {
-          throw new ApiError(404, 'ACCOUNT_NOT_FOUND', 'Account not found');
+          throw new AccountNotFoundError();
         }
         const total = await repository.countHistory(accountId, query.type);
         const rows = await repository.listHistory(accountId, query);
@@ -53,27 +58,19 @@ export function createTransactionsService(pool: Pick<Pool, 'connect'>): Transact
       return withTransaction(pool, async (client) => {
         const repository = createTransactionsRepository(client);
         if (!(await repository.lockAccount(accountId))) {
-          throw new ApiError(404, 'ACCOUNT_NOT_FOUND', 'Account not found');
+          throw new AccountNotFoundError();
         }
         // Check duplicates first while holding the account lock: a repeated debit
         // must remain a conflict even if the first request exhausted the balance.
         if (await repository.hasReference(accountId, input.reference_id)) {
-          throw new ApiError(
-            409,
-            'DUPLICATE_TRANSACTION',
-            'Reference already used for this account',
-          );
+          throw new DuplicateReferenceError('transaction');
         }
         const balance = await repository.updateBalance(accountId, input);
         if (balance === undefined) {
           if (input.type === 'debit') {
-            throw new ApiError(422, 'INSUFFICIENT_BALANCE', 'Account has insufficient balance');
+            throw new InsufficientBalanceError();
           }
-          throw new ApiError(
-            422,
-            'BALANCE_LIMIT_EXCEEDED',
-            'Credit would exceed the maximum account balance',
-          );
+          throw new BalanceLimitError();
         }
         const transaction = await repository.insert(accountId, input);
         // Validate/serialize before COMMIT so any unexpected output failure also

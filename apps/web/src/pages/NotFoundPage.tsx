@@ -1,27 +1,28 @@
-/** Recoverable route/identifier error screen composed from the shared shell primitives. */
-import { Container, ButtonLink, Icon } from '../components/ui/index.js';
-
-/** Keeps malformed routes useful without inventing account data or leaving a blank screen. */
+/** Route failures reuse the same four-field mapped recovery UI as all application errors. */
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Container, ErrorNotice } from '../components/ui/index.js';
+import { ApplicationError, reportError } from '../errors/index.js';
+/** No route identifiers, stack traces or internal paths are interpolated into public copy. */
 export function NotFoundPage({ invalidAccount = false }: { invalidAccount?: boolean }) {
+  const navigate = useNavigate();
+  const [error] = useState(() =>
+    reportError(
+      new ApplicationError(
+        'Route could not be opened',
+        invalidAccount ? 'INVALID_ACCOUNT_ID' : 'ROUTE_NOT_FOUND',
+      ),
+      'route.not-found',
+    ),
+  );
   return (
     <Container>
       <div className="recovery">
-        <p>LET’S GET YOU BACK</p>
-        <h1>{invalidAccount ? 'This account ID is not valid.' : 'We couldn’t find that page.'}</h1>
-        <p>
-          {invalidAccount
-            ? 'Enter the complete Account ID you saved when creating your account, or create a new account.'
-            : 'The page may have moved, or the address may be incomplete. Your next entry is still waiting.'}
-        </p>
-        <div className="inline-actions">
-          <ButtonLink to="/#get-started" state={{ entry: 'lookup' }}>
-            Open an account
-            <Icon name="arrow" />
-          </ButtonLink>
-          <ButtonLink variant="secondary" to="/">
-            Back to overview
-          </ButtonLink>
-        </div>
+        <ErrorNotice
+          error={error}
+          onFixInput={() => navigate('/#get-started', { state: { entry: 'lookup' } })}
+          onGoBack={() => navigate('/')}
+        />
       </div>
     </Container>
   );

@@ -194,21 +194,26 @@ Account existence, filtered count, and rows are read on one client in a read-onl
 
 ## Errors
 
-Every application, validation, parsing, and unmatched-route error uses this envelope:
+Every application, validation, parsing, and unmatched-route error uses exactly four public fields:
 
 ```json
 {
   "error": {
+    "support_ticket_id": "11111111-1111-4111-8111-111111111111",
     "code": "VALIDATION_ERROR",
-    "message": "Request validation failed",
-    "details": {
-      "issues": [{ "path": "body.name", "code": "invalid_type" }]
-    }
+    "message": "Check the entered details and correct any invalid values before continuing.",
+    "action": "fix_input"
   }
 }
 ```
 
-The `details` object can be empty. Validation issues identify fields and issue codes without echoing submitted values. Clients can use the exported shared request schemas for field-level feedback.
+`X-Support-Ticket-ID` repeats the server-generated ID and is exposed through CORS. The ID correlates the response with private server logs; it does not create a ticket in an external support platform. Client-only failures receive a local ID. Public actions are allowlisted identifiers (`retry`, `go_back`, `review`, `fix_input`, `reload`), resolved to actual buttons by the browser. They never contain scripts or destination URLs.
+
+**Coordinated contract change:** `details` is removed. Validation issue metadata remains private; clients use shared request schemas and the safe local validation mapper. Update API and frontend together. A new client treats legacy/malformed error responses as unconfirmed; it must not assume that a financial write rolled back. Successful DTOs, status/code meanings and database schema remain unchanged.
+
+Messages come from the exhaustive shared error catalog, with a safe unknown-error fallback. The frontend independently resolves copy from the validated code and operation context instead of trusting received message/action text. Unknown writes preserve original intentions and expose only an identical explicit retry; unconfirmed account creation offers Go Back because creation is not idempotent. Duplicate references remain conflicts rather than success receipts.
+
+Typed domain errors retain causes internally. Central middleware maps expected errors and known SQL constraints, logs one correlated diagnostic, and returns a four-field safe envelope. Unexpected render, event, rejection, bootstrap, process and pool errors use application-level handlers. Browser diagnostics retain a bounded 50-record causal buffer for trusted local debugging; browser console output contains correlation metadata only. Server logs retain redacted causal chains/aggregates/stacks, without request bodies, credentials or raw connection URLs. No external telemetry or ticketing integration is configured.
 
 | HTTP status | Code                     | Meaning                                                                                        |
 | ----------- | ------------------------ | ---------------------------------------------------------------------------------------------- |
@@ -231,6 +236,8 @@ CORS allows browser access from the configured `WEB_ORIGIN`, with GET/POST/OPTIO
 
 `pnpm test` runs shared-contract tests, API infrastructure unit tests, and Supertest HTTP-to-SQL account and transaction tests. Account integration tests apply the actual initial migration to a fresh in-memory PGlite database and close it afterward. They do not load `.env` or mutate the hosted Supabase database. Transaction tests use a separate disposable native PostgreSQL 17 cluster with independent `pg` connections. They force balance-update/insert rollback, observe actual account-lock contention for concurrent debits/duplicates, test exact maximum balances, and reconcile balances with ledger totals. History tests use a disposable PostgreSQL 17 cluster to verify filters, totals, page boundaries, timestamp/UUID ordering, invalid input, and snapshot consistency while another session commits a movement. PGlite verifies account SQL/defaults/constraints and the HTTP path; it does not replace hosted PostgreSQL/network/TLS verification, which is covered separately by the database check command and documented connection checks.
 
-Current verification: 128 shared-contract tests and 180 API tests pass (308 backend/contract tests); 64 frontend tests also pass (372 total). Transfer coverage adds 42 contract cases and 53 native PostgreSQL integration cases: migration over existing data, constraint/permission checks, forced failure at each write and during response validation, duplicate persistence, opposing transfers, competing outgoing/incoming movements and standalone-operation contention. Each test reconciles balances and verifies every transfer has exactly two matching legs. Native fixtures apply all migrations in timestamp order. Tests never mutate the hosted Supabase ledger.
+Current verification: 156 shared-contract tests, 210 API tests and 108 frontend tests pass (474 total). Transfer coverage adds 42 contract cases and 53 native PostgreSQL integration cases: migration over existing data, constraint/permission checks, forced failure at each write and during response validation, duplicate persistence, opposing transfers, competing outgoing/incoming movements and standalone-operation contention. Each test reconciles balances and verifies every transfer has exactly two matching legs. Native fixtures apply all migrations in timestamp order. Tests never mutate the hosted Supabase ledger.
 
-The transfer browser UI validates against the shared command schema and verifies that a success response matches the preserved request. It does not change server semantics: 409 remains a conflict, not a replayed success. Explicit identical retries preserve reference identity, and uncertain outcomes are not labelled rolled back. The 17 browser tests include actual source/recipient ledger flows, committed-response loss, known errors and read-refresh failure. No new HTTP routes, contracts or schema changes were needed for the UI.
+The transfer browser UI validates against the shared command schema and verifies that a success response matches the preserved request. It does not change server semantics: 409 remains a conflict, not a replayed success. Explicit identical retries preserve reference identity, and uncertain outcomes are not labelled rolled back. The 24 browser tests include actual source/recipient ledger flows, committed-response loss, known errors and read-refresh failure. The centralized error follow-up changes only the failure envelope described above; it adds no routes or database migrations.
+
+Error-handling review: API logs include timestamps and preserve templated mounted routes and safe validation paths. Serialization cannot fail on revoked proxies/hostile accessors; quoted credentials and Bearer values are fully redacted, and request/query payloads are omitted. Logging sink failures retain private fallback correlation rather than changing HTTP responses. See [support-ID lookup](error-handling.md) for sources, current local logs and retention limits. Public envelopes, statuses and database semantics are unchanged by this review.

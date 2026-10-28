@@ -4,8 +4,9 @@
  */
 import type { Server } from 'node:http';
 import type { Pool } from 'pg';
+import { logInternalError } from './errors/index.js';
 import { createApp } from './index.js';
-import { EnvironmentValidationError, parseEnvironment } from './config/index.js';
+import { parseEnvironment } from './config/index.js';
 import { createDatabasePool } from './db/index.js';
 
 let pool: Pool | undefined;
@@ -50,8 +51,8 @@ async function start(): Promise<void> {
   });
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.once(signal, () => {
-      void shutdown().catch(() => {
-        console.error('API shutdown failed.');
+      void shutdown().catch((error: unknown) => {
+        logInternalError(error, 'api.shutdown');
         process.exitCode = 1;
       });
     });
@@ -60,13 +61,19 @@ async function start(): Promise<void> {
 }
 
 void start().catch(async (error: unknown) => {
-  // Raw driver errors can include secret connection details. Validation errors
-  // deliberately contain only field names and are safe to print.
-  console.error(
-    error instanceof EnvironmentValidationError
-      ? error.message
-      : 'API startup failed. Check database connectivity, CA certificate, and listener settings.',
-  );
+  logInternalError(error, 'api.startup');
   process.exitCode = 1;
-  await shutdown().catch(() => console.error('API cleanup failed.'));
+  await shutdown().catch((cleanupError: unknown) => {
+    logInternalError(cleanupError, 'api.cleanup');
+  });
 });
+
+// Unhandled process failures are fatal: log the original cause and drain, never continue in unknown state.
+for (const event of ['unhandledRejection', 'uncaughtException'] as const)
+  process.on(event, (error: unknown) => {
+    logInternalError(error, `process.${event}`);
+    process.exitCode = 1;
+    void shutdown().catch((cleanupError: unknown) => {
+      logInternalError(cleanupError, 'process.cleanup');
+    });
+  });

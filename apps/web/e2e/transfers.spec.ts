@@ -118,14 +118,14 @@ test('a committed transfer with a lost response restores and retries the exact i
   await page.goto(`/accounts/${source}`);
   let form = await review(page, destination);
   await form.getByRole('button', { name: 'Confirm transfer' }).click();
-  await expect(form.getByText('Transfer result unconfirmed')).toBeVisible();
+  await expect(form.getByText(/Transfer result unconfirmed/)).toBeVisible();
   await expect(form.getByLabel('Transfer amount')).toHaveCount(0);
   await page.reload();
   form = page.getByRole('form', { name: 'Transfer between accounts' });
   await expect(form.getByRole('button', { name: 'Retry same transfer' })).toBeVisible();
   expect(bodies).toHaveLength(1);
   await form.getByRole('button', { name: 'Retry same transfer' }).click();
-  await expect(form.getByText('Transfer reference already used')).toBeVisible();
+  await expect(form.getByText(/Transfer reference already used/)).toBeVisible();
   await expect(form.getByText('Transfer complete')).toHaveCount(0);
   expect(bodies).toHaveLength(2);
   expect(bodies[0]).toEqual(bodies[1]);
@@ -133,7 +133,7 @@ test('a committed transfer with a lost response restores and retries the exact i
   expect(await balance(request, destination)).toBe('1.50');
   const history = await request.get(`${api}/accounts/${source}/transactions?type=debit`);
   expect((await history.json()).pagination.total_records).toBe(1);
-  await form.getByRole('button', { name: 'Refresh account' }).click();
+  await form.getByRole('button', { name: 'Review account' }).click();
   expect(bodies).toHaveLength(2);
   await expect(form.getByRole('button', { name: 'New transfer' })).toBeDisabled();
   await page.setViewportSize({ width: 375, height: 1000 });
@@ -158,7 +158,7 @@ test('known destination and balance errors preserve editable fields and leave bo
   await page.goto(`/accounts/${source}`);
   const form = await review(page, full);
   await form.getByRole('button', { name: 'Confirm transfer' }).click();
-  await expect(form.getByRole('alert')).toContainText('destination balance limit');
+  await expect(form.getByRole('alert')).toContainText('balance limit');
   await expect(form.getByLabel('Transfer amount')).toHaveValue('1.50');
   await form.getByLabel('Destination account ID').fill('aaaaaaaa-0000-4000-8000-000000000001');
   await form.getByRole('button', { name: 'Review transfer' }).click();
@@ -197,7 +197,14 @@ test('failed balance/history refresh preserves a completed receipt and read retr
       balanceFailed = true;
       await route.fulfill({
         status: 500,
-        json: { error: { code: 'INTERNAL_ERROR', message: 'Read failed', details: {} } },
+        json: {
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: 'Read failed',
+            support_ticket_id: '11111111-1111-4111-8111-111111111111',
+            action: 'fix_input',
+          },
+        },
       });
     } else await route.continue();
   });
@@ -206,7 +213,14 @@ test('failed balance/history refresh preserves a completed receipt and read retr
       historyFailed = true;
       await route.fulfill({
         status: 500,
-        json: { error: { code: 'INTERNAL_ERROR', message: 'Read failed', details: {} } },
+        json: {
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: 'Read failed',
+            support_ticket_id: '11111111-1111-4111-8111-111111111111',
+            action: 'fix_input',
+          },
+        },
       });
     } else await route.continue();
   });
@@ -216,9 +230,9 @@ test('failed balance/history refresh preserves a completed receipt and read retr
   await expect(form.getByText('Transfer complete', { exact: true })).toBeVisible();
   await expect(page.getByText('Last confirmed balance', { exact: true })).toBeVisible();
   await expect(page.getByTestId('account-balance')).toHaveText('2.00');
-  await page.getByRole('button', { name: 'Retry balance' }).click();
+  await page.getByRole('button', { name: 'Retry account' }).click();
   await expect(page.getByTestId('account-balance')).toHaveText('0.50');
-  await page.getByRole('button', { name: 'Retry history' }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(page.locator('.history-table')).toContainText('Shared expense');
   expect(writes).toBe(1);
   await expect(form.getByText('Transfer complete', { exact: true })).toBeVisible();

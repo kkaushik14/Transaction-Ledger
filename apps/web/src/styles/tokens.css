@@ -43,5 +43,9 @@
   --header-height: 80px;
   --breakpoint-mobile: 640px;
   --breakpoint-desktop: 1024px;
+  --motion-fast: 160ms;
+  --motion-ease: ease-out;
+  --footer-base: 17 17 17;
+  --footer-start-opacity: 88%;
   --shadow-card: 0 18px 48px rgb(0 0 0 / 5%);
 }

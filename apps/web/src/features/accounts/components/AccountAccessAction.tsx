@@ -1,4 +1,5 @@
 /** Shared header/drawer action changes with the selected workspace and preserves financial retries. */
+import { runSafely } from '../../../errors/index.js';
 import { useNavigate } from 'react-router-dom';
 import { Button, ButtonLink } from '../../../components/ui/index.js';
 import { useActiveAccount } from '../hooks/index.js';
@@ -30,7 +31,10 @@ export function AccountAccessAction({
       onClick={() => {
         active.forget();
         onNavigate?.();
-        void navigate('/', { replace: true, state: { loggedOut: true } });
+        runSafely(
+          () => navigate('/', { replace: true, state: { loggedOut: true } }),
+          'account.logout.navigation',
+        );
       }}
     >
       Log out

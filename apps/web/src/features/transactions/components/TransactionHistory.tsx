@@ -5,12 +5,13 @@ import type { HistoryFilter } from '../hooks/index.js';
 import {
   SelectField,
   LoadingState,
-  StatusMessage,
+  Skeleton,
+  ErrorNotice,
   Pagination,
-  Button,
   Icon,
 } from '../../../components/ui/index.js';
 
+import type { ApplicationError } from '../../../errors/index.js';
 import styles from './transactions.module.css';
 /** Formats server UTC times for display only; never reorders the server's latest-first rows. */
 function displayTime(value: string): string {
@@ -26,7 +27,8 @@ function displayTime(value: string): string {
 export interface TransactionHistoryProps {
   data: TransactionHistoryResponse | undefined;
   loading: boolean;
-  error: string | undefined;
+  error: ApplicationError | undefined;
+  errorReported?: boolean;
   filter: HistoryFilter;
   onFilter: (filter: HistoryFilter) => void;
   onPage: (page: number) => void;
@@ -41,6 +43,7 @@ export function TransactionHistory({
   onFilter,
   onPage,
   onRetry,
+  errorReported = false,
 }: TransactionHistoryProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   function changePage(page: number) {
@@ -75,15 +78,12 @@ export function TransactionHistory({
           <option value="debit">Debits</option>
         </SelectField>
       </div>
-      {error ? (
-        <div className="stack">
-          <StatusMessage tone="error">{error}</StatusMessage>
-          <Button variant="secondary" onClick={onRetry}>
-            Retry history
-          </Button>
-        </div>
+      {error && errorReported ? (
+        <LoadingState label="Waiting for account data refresh…" />
+      ) : error ? (
+        <ErrorNotice error={error} context="history" onRetry={onRetry} />
       ) : loading ? (
-        <LoadingState label="Loading transaction history…" />
+        <Skeleton variant="history" />
       ) : (
         data && (
           <>

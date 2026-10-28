@@ -1,14 +1,14 @@
 /** Validates untrusted HTTP inputs with shared Zod contracts before controllers run. */
 import type { Request, RequestHandler } from 'express';
 import type { ZodType } from 'zod';
-import { ApiError } from '../errors/index.js';
+import { ApiError, InputValidationError } from '../errors/index.js';
 
 /** Parses one request source and returns only safe issue metadata on failure. */
 function parseInput<T>(schema: ZodType<T>, input: unknown, source: string): T {
   const result = schema.safeParse(input);
   if (!result.success) {
     // Expose field paths and issue codes, never request values or raw parser errors.
-    throw new ApiError(400, 'VALIDATION_ERROR', 'Request validation failed', {
+    throw new InputValidationError({
       issues: result.error.issues.map((issue) => ({
         path: [source, ...issue.path.map(String)].join('.'),
         code: issue.code,

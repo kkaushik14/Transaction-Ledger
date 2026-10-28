@@ -309,3 +309,34 @@
     padding: var(--space-5) !important;
   }
 }
+
+/* Only the footer uses a decorative gradient: one neutral base over white. */
+.site-footer {
+  background:
+    linear-gradient(
+      180deg,
+      rgb(var(--footer-base) / var(--footer-start-opacity)),
+      rgb(var(--footer-base) / 100%)
+    ),
+    #fff;
+  color: var(--color-on-strong);
+  border-color: var(--color-inverse-border);
+}
+.site-footer .footer-copy,
+.site-footer .footer-nav a,
+.site-footer .footer-bottom {
+  color: var(--color-inverse-muted);
+}
+.site-footer .footer-nav a:hover {
+  color: var(--color-on-strong);
+}
+.site-footer .footer-bottom {
+  border-color: var(--color-inverse-border);
+}
+.site-footer .logo-mark {
+  background: var(--color-on-strong);
+  color: var(--color-text);
+}
+.site-footer :focus-visible {
+  outline-color: var(--color-on-strong);
+}
