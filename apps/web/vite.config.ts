@@ -4,10 +4,12 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   server: {
+    // Browser audits need stable forms; normal development keeps hot reload.
+    ...(mode === 'e2e' ? { hmr: false } : {}),
     port: 5173,
     strictPort: true,
     fs: {
@@ -25,4 +27,4 @@ export default defineConfig({
       ],
     },
   },
-});
+}));

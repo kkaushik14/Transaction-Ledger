@@ -18,7 +18,7 @@ const diagnosticFile = fileURLToPath(new URL('../test-results/api-errors.jsonl',
 const logger = createErrorLogger((line) => {
   console.error(line);
   mkdirSync(diagnosticDirectory, { recursive: true });
-  appendFileSync(diagnosticFile, `${line}\n`);
+  appendFileSync(diagnosticFile, `${line}\n`, { mode: 0o600 });
 });
 const app = createApp({ database: fixture.pool, webOrigin: 'http://127.0.0.1:5173', logger });
 const server = createServer((request, response) => {

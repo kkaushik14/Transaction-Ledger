@@ -1,5 +1,6 @@
 /** Public failures are actionable, correlated and free of diagnostic internals at real browser widths. */
 import { test, expect } from '@playwright/test';
+import { stat } from 'node:fs/promises';
 import AxeBuilder from '@axe-core/playwright';
 const api = 'http://127.0.0.1:4310/api/v1';
 const ticket = '11111111-1111-4111-8111-111111111111';
@@ -152,6 +153,9 @@ test('a real displayed API ticket is traceable in browser console and serialized
   expect(record?.scope).toBe('GET /api/v1/accounts/:accountId/balance');
   expect(Number.isNaN(Date.parse(record!.timestamp))).toBe(false);
   expect(records.some((item) => item.supportTicketId === historyId)).toBe(true);
+  expect(
+    (await stat(new URL('../test-results/api-errors.jsonl', import.meta.url))).mode & 0o077,
+  ).toBe(0);
   const download = await page.request.get('/test-results/api-errors.jsonl');
   expect(download.status()).toBe(403);
   expect(await download.text()).not.toContain(visibleId);

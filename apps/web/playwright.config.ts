@@ -28,7 +28,7 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: 'pnpm dev --host 127.0.0.1 --port 5173',
+      command: 'pnpm dev --host 127.0.0.1 --port 5173 --mode e2e',
       url: 'http://127.0.0.1:5173',
       timeout: 30000,
       reuseExistingServer: false,

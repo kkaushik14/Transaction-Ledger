@@ -58,6 +58,13 @@ export function serializeDiagnostic(error: unknown, seen = new Set<unknown>(), d
     }
     if (
       [
+        // Driver context can embed complete SQL literals or rejected rows. Preserve
+        // code/constraint/message/cause, but never serialize those payload carriers.
+        'internalquery',
+        'querytext',
+        'sqltext',
+        'detail',
+        'where',
         'body',
         'request',
         'response',
@@ -68,7 +75,7 @@ export function serializeDiagnostic(error: unknown, seen = new Set<unknown>(), d
         'config',
         'connection',
         'client',
-      ].includes(key)
+      ].includes(key.toLowerCase())
     ) {
       result[key] = '[omitted]';
       continue;

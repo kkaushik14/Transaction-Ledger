@@ -227,3 +227,25 @@ describe('logging availability', () => {
     }
   });
 });
+
+describe('driver diagnostic payload privacy', () => {
+  it('omits PostgreSQL statement/row context and case variants without losing the error identity or cause', () => {
+    const marker = 'private-ledger-description-marker';
+    const driver = Object.assign(new Error('database operation failed'), {
+      code: 'P0001',
+      internalQuery: `INSERT INTO ledger.transactions(description) VALUES ('${marker}')`,
+      detail: `Failing row contains (${marker})`,
+      where: `SQL statement with ${marker}`,
+      Query: `SELECT '${marker}'`,
+      SQL: `SELECT '${marker}'`,
+      Parameters: [marker],
+    });
+    const encoded = JSON.stringify(
+      serializeDiagnostic(new Error('transaction failed', { cause: driver })),
+    );
+    expect(encoded).not.toContain(marker);
+    expect(encoded).toContain('P0001');
+    expect(encoded).toContain('database operation failed');
+    expect(encoded).toContain('transaction failed');
+  });
+});
