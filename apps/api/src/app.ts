@@ -1,5 +1,6 @@
 /** Composes account, transaction/history and atomic transfer routes with validation, CORS and safe errors. */
 import { randomUUID } from 'node:crypto';
+import { createDocsRouter } from './docs/index.js';
 import express, { type Express, type RequestHandler } from 'express';
 import cors from 'cors';
 import type { Pool } from 'pg';
@@ -48,6 +49,8 @@ export function createApp({ database, webOrigin, logger }: AppDependencies): Exp
       exposedHeaders: ['X-Support-Ticket-ID'],
     }),
   );
+  // Public documentation uses bundled assets and a versioned spec; opening it never touches the ledger.
+  app.use('/api/docs', createDocsRouter());
   // Parse bounded JSON before body validation; malformed/oversized requests reach
   // the final error handler rather than Express's default HTML response.
   app.use(express.json({ limit: '16kb' }));

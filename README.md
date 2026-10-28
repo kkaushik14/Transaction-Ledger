@@ -21,7 +21,7 @@ cp apps/api/.env.example apps/api/.env
 pnpm dev
 ```
 
-Open `http://localhost:5173` for the landing page and account entry forms. The API listens on port 3000; see [API reference](docs/api-reference.md) for payloads and errors. The contracts workspace runs a TypeScript watcher during combined development.
+Open `http://localhost:5173` for the landing page and account entry forms. The API listens on port 3000; open the primary [Swagger UI documentation](http://localhost:3000/api/docs) for endpoint contracts and examples. Download the [versioned OpenAPI v1 JSON](http://localhost:3000/api/docs/openapi.v1.json); see [documentation maintenance](docs/api-reference.md) for source ownership and checks. The contracts workspace runs a TypeScript watcher during combined development.
 
 ```sh
 pnpm dev:api
@@ -33,6 +33,12 @@ These commands start either app independently. Root development commands first b
 Configure `DATABASE_URL`, `PORT`, `WEB_ORIGIN`, and `NODE_ENV` in `apps/api/.env` or the process environment. Startup fails with variable names only if validation fails. `DATABASE_POOL_MAX` defaults to 5 (range 1–20); `DATABASE_SSL_CA_PATH` defaults to the bundled Supabase CA, and override paths resolve relative to `apps/api`. The existing configured `.env` can be used without changes. `WEB_ORIGIN` restricts CORS to the configured frontend origin; it does not provide authentication. Node loads the API `.env` through the startup scripts; placeholder values must be replaced locally.
 
 The frontend defaults to `http://localhost:3000/api/v1`. To use a different API, copy `apps/web/.env.example` to `apps/web/.env`, set public `VITE_API_BASE_URL`, and restart Vite. Never put Supabase/database keys in `VITE_*` variables. Production hosting must serve `index.html` for client routes such as `/accounts/:accountId`; public deployment is outside this scope.
+
+## API documentation
+
+The primary API reference is **OpenAPI 3.1 + Swagger UI**, served by the API itself at [http://localhost:3000/api/docs](http://localhost:3000/api/docs). The [versioned specification](http://localhost:3000/api/docs/openapi.v1.json) describes `/api/v1` with document version `1.0.0`; use the configured API origin if `PORT` differs. It covers account creation/balances, credit/debit, history filters/pagination, success/error examples, duplicate references, uncertain retries and the bonus atomic transfer API.
+
+All Swagger assets are installed dependencies served locally; no CDN or online validator is used. Opening docs performs no database work. **Try it out → Execute** sends requests only after explicit action. Financial retries must reuse the original reference/payload; a duplicate returns 409, not a replayed success. See [documentation ownership and verification](docs/api-reference.md). Documentation follow-up verification: 560 automated tests and 34 browser workflows, including schema/example validation, local asset loading and explicit Swagger execution against a disposable API.
 
 ## Workspace layout
 
@@ -65,7 +71,7 @@ Implemented code folders expose explicit typed `index.ts` entries. Import across
 | `pnpm --filter @ledger/api start`   | Run the built account API after `pnpm build`                                             |
 | `pnpm --filter @ledger/web preview` | Preview the built frontend after `pnpm build` (requires a separately running API)        |
 
-The [reliability audit](docs/reliability-audit.md) records the current 533 automated tests and 32 browser workflows, prioritized financial invariants, controlled COMMIT/rollback faults, saved-reference timeout retries and diagnostic privacy checks. Browser fixtures use a dedicated `e2e` mode with HMR disabled so development reloads cannot reset forms during assertions; normal development keeps HMR.
+The [reliability audit](docs/reliability-audit.md) records the 533 automated tests and 32 browser workflows at audit completion, prioritized financial invariants, controlled COMMIT/rollback faults, saved-reference timeout retries and diagnostic privacy checks. Browser fixtures use a dedicated `e2e` mode with HMR disabled so development reloads cannot reset forms during assertions; normal development keeps HMR.
 
 The suite contains shared-contract, API infrastructure, account/transaction HTTP/SQL, and frontend component/hook/page tests. Account integration tests use isolated in-memory PGlite; transaction/history tests use a disposable PostgreSQL 17 cluster and the actual migration. Tests do not read the application's `.env` or mutate hosted Supabase. Every workspace test command fails if no tests exist. Local HTTP/SQL tests need permission to bind loopback ports in sandboxed environments. See the database setup guide for hosted schema and TLS verification status.
 
